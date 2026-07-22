@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vllm
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vllm-ksa
+  namespace: vllm
+  annotations:
+    iam.gke.io/gcp-service-account: "vllm-sa@${PROJECT_ID}.iam.gserviceaccount.com"
