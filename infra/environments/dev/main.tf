@@ -1,10 +1,12 @@
 terraform {
+  required_version = ">= 1.0.0"
   backend "gcs" {}
 }
 
 module "network" {
   source     = "../../modules/network"
   project_id = var.project_id
+  region     = "us-central1"
 }
 
 module "vllm-cluster" {
@@ -12,6 +14,7 @@ module "vllm-cluster" {
   project_id   = var.project_id
   network_name = module.network.network_name
   subnet_name  = module.network.subnet_name
+  region       = "us-central1"
 
   authorized_ip_ranges = [
     {

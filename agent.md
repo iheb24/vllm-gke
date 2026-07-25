@@ -6,6 +6,7 @@ Welcome to the vLLM on GKE project. When working on this repository as an AI age
 - **Objective:** Host a vLLM instance on Google Kubernetes Engine (GKE) to serve the **Qwen 2.5 Coder 7B (or 14B) Instruct** model.
 - **Model Specs:** Loading in pure FP16 (no quantization) to preserve over 8GB of VRAM for a large developer context window.
 - **Hardware Specs:** Target GKE node pool is `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM).
+- **Location & Quotas:** The cluster is deployed in `us-central1`. To avoid triggering a 'GCE quota exceeded' error, the GPU node pool must be strictly Zonal (e.g., `us-central1-a`) with `max_node_count = 1`.
 
 ## 2. Security & Secrets Management
 - **Public Repository Rules:** This is a public repository. **NEVER** hardcode sensitive data, API keys, database passwords, or static Service Account credentials in any file.

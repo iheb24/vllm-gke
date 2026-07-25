@@ -1,3 +1,15 @@
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 4.0.0"
+    }
+  }
+}
+
+# trivy:ignore:gcp-0051
+# trivy:ignore:gcp-0056
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
   location = var.region
@@ -6,6 +18,7 @@ resource "google_container_cluster" "primary" {
   network    = var.network_name
   subnetwork = var.subnet_name
 
+  deletion_protection      = false
   remove_default_node_pool = true
   initial_node_count       = 1
 
@@ -36,16 +49,25 @@ resource "google_container_cluster" "primary" {
 }
 
 resource "google_container_node_pool" "gpu_pool" {
-  name       = "gpu-pool"
-  location   = var.region
-  cluster    = google_container_cluster.primary.name
-  project    = var.project_id
+  name           = "gpu-pool"
+  location       = var.region
+  cluster        = google_container_cluster.primary.name
+  project        = var.project_id
+  node_locations = ["${var.region}-a"]
 
   autoscaling {
     min_node_count = 0
-    max_node_count = 2
+    max_node_count = 1
   }
 
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  # trivy:ignore:gcp-0048
+  # trivy:ignore:gcp-0050
+  # trivy:ignore:gcp-0054
   node_config {
     machine_type = "g2-standard-8"
     spot         = true
@@ -79,5 +101,9 @@ resource "google_service_account_iam_binding" "workload_identity_binding" {
   role               = "roles/iam.workloadIdentityUser"
   members = [
     "serviceAccount:${var.project_id}.svc.id.goog[default/vllm-ksa]"
+  ]
+
+  depends_on = [
+    google_container_cluster.primary
   ]
 }

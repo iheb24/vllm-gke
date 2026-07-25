@@ -4,15 +4,11 @@ repos:
     hooks:
       - id: gitleaks
 
-  - repo: https://github.com/aquasecurity/tfsec
-    rev: v1.28.5
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.0
     hooks:
-      - id: tfsec
-
-  - repo: https://github.com/terraform-linters/tflint
-    rev: v0.50.3
-    hooks:
-      - id: tflint
+      - id: terraform_trivy
+      - id: terraform_tflint
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.2.0

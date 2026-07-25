@@ -13,7 +13,7 @@ This module provisions a custom VPC and Subnet tailored for a private GKE cluste
 ```mermaid
 graph TD
     subgraph "VPC: vllm-vpc"
-        subgraph "Subnet: vllm-subnet (europe-west4)"
+        subgraph "Subnet: vllm-subnet (us-central1)"
             Nodes["Primary Range (Nodes)<br/>10.0.0.0/20"]
             Pods["Secondary Range (Pods)<br/>10.4.0.0/14"]
             Services["Secondary Range (Services)<br/>10.8.0.0/20"]

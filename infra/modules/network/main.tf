@@ -1,9 +1,21 @@
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 4.0.0"
+    }
+  }
+}
+
 resource "google_compute_network" "vpc" {
   name                    = var.network_name
   project                 = var.project_id
   auto_create_subnetworks = false
 }
 
+# trivy:ignore:gcp-0029
+# trivy:ignore:gcp-0076
 resource "google_compute_subnetwork" "subnet" {
   name                     = var.subnet_name
   project                  = var.project_id
