@@ -7,7 +7,7 @@ This repository contains the infrastructure as code (Terraform) and Kubernetes m
 ## Architecture Highlights
 - **Model:** Qwen 2.5 Coder 7B or 14B Instruct.
 - **Hardware:** GCP `g2-standard-8` on Spot Instances (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `us-central1`.
-- **Security:** Strict security posture utilizing Workload Identity and secure remote Terraform state storage.
+- **Security:** Strict security utilizing Workload Identity and private network.
 
 ## Security and Pre-commit Hooks
 
@@ -15,11 +15,16 @@ This project enforces strict security checks to prevent secrets from being leake
 
 ### Installation
 
-1. Install [pre-commit](https://pre-commit.com/):
+1. Install the required security scanning binaries (macOS):
    ```bash
-   pip install pre-commit
+   brew install terraform-linters/tap/tflint
+   brew install aquasecurity/trivy/trivy
    ```
-2. Install the hooks in this repository:
+2. Install [pre-commit](https://pre-commit.com/) (using `pip` or `uv`):
+   ```bash
+   uv pip install pre-commit
+   ```
+3. Install the hooks in this repository:
    ```bash
    pre-commit install
    pre-commit install --hook-type commit-msg
@@ -27,7 +32,7 @@ This project enforces strict security checks to prevent secrets from being leake
 
 The pre-commit hooks will automatically check for:
 - Accidentally committed secrets (`gitleaks`).
-- Terraform misconfigurations and security issues (`tfsec`, `tflint`).
+- Terraform misconfigurations and security issues (`trivy`, `tflint`).
 - Correctly formatted commit messages (`conventional-commits`).
 
 ## Developer Guidelines

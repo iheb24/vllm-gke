@@ -22,7 +22,7 @@ When generating code or answering questions about this project, keep in mind:
 When the user asks you to perform one of these actions, follow these specific steps:
 
 ### A. Deploying the Infrastructure (`deploy-vllm`)
-1. **Verify Security Checks:** Ask the user if `pre-commit` (with `gitleaks`, `tfsec`) has passed on their local branch.
+1. **Verify Security Checks:** Ask the user if `pre-commit` (with `gitleaks`, `trivy`, `tflint`) has passed on their local branch.
 2. **Terraform Plan:** Run or prompt the user to run `terraform plan`.
 3. **Review with User:** Do not automatically apply. Explain the planned changes to the user so they can learn what is happening.
 4. **Apply:** Once approved, instruct the user to run `terraform apply` or execute it if given terminal permission.

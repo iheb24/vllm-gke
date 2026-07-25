@@ -12,7 +12,7 @@ Welcome to the vLLM on GKE project. When working on this repository as an AI age
 - **Public Repository Rules:** This is a public repository. **NEVER** hardcode sensitive data, API keys, database passwords, or static Service Account credentials in any file.
 - **Pre-commit Hooks:** We enforce a strict pre-commit baseline. This must include:
   - `gitleaks` (Secret scanning)
-  - `tfsec` or `checkov` (Terraform security scanning)
+  - `trivy` (Terraform security and misconfiguration scanning)
   - `tflint` (Terraform best practices)
   - `commitlint` (for Conventional Commits)
 - **Workload Identity:** All GKE pods requiring Google Cloud access must authenticate using Google Cloud Workload Identity. Do not generate or use static service account JSON keys for pods.
