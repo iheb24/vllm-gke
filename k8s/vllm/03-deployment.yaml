@@ -25,10 +25,11 @@ spec:
           image: vllm/vllm-openai:latest
           command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
           args:
-            - "--model=Qwen/Qwen2.5-Coder-7B-Instruct"
-            - "--dtype=half"
-            - "--max-model-len=16384"
-            - "--gpu-memory-utilization=0.9"
+            - "--model=Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+            - "--quantization=awq"
+            - "--max-model-len=32768"
+            - "--gpu-memory-utilization=0.95"
+            - "--enforce-eager"
           env:
             - name: VLLM_API_KEY
               valueFrom:

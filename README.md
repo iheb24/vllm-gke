@@ -6,8 +6,8 @@ Welcome to the `vllm-gke` project!
 This repository contains the infrastructure as code (Terraform) and Kubernetes manifests to deploy a vLLM instance on Google Kubernetes Engine (GKE).
 
 ## Architecture Highlights
-- **Model:** Qwen 2.5 Coder 7B or 14B Instruct.
-- **Hardware:** GCP `g2-standard-8` on Spot Instances (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `us-central1`.
+- **Model:** Qwen 2.5 Coder 14B AWQ.
+- **Hardware:** GCP `g2-standard-8` on Standard Instances (Optional Spot Instances) (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `europe-west4`.
 - **Security:** Strict security utilizing Workload Identity and private network.
 
 ## Security and Pre-commit Hooks

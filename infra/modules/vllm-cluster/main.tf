@@ -70,7 +70,9 @@ resource "google_container_node_pool" "gpu_pool" {
   # trivy:ignore:gcp-0054
   node_config {
     machine_type = "g2-standard-8"
-    spot         = true
+    
+    # Uncomment the line below to use Spot instances instead of Standard (On-Demand) instances
+    # spot = true
 
     guest_accelerator {
       type  = "nvidia-l4"

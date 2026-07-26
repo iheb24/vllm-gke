@@ -10,9 +10,9 @@ This skill is designed to manage the specific infrastructure of the `vllm-gke` r
 ## 1. Context and Rules
 
 When generating code or answering questions about this project, keep in mind:
-- **Model:** Qwen 2.5 Coder 7B or 14B Instruct.
-- **Node Pool Target:** `g2-standard-8` (1x L4 GPU) on Spot.
-- **Location & Quotas:** Deployed in `us-central1`. The node pool must be Zonal with `max_node_count=1` to prevent the GKE autoscaler from failing pre-flight quota checks due to global GPU quota constraints.
+- **Model:** Qwen 2.5 Coder 14B AWQ.
+- **Node Pool Target:** `g2-standard-8` (1x L4 GPU) on Standard Instances (Spot is optional).
+- **Location & Quotas:** Deployed in `europe-west4`. The node pool must be Zonal with `max_node_count=1` to prevent the GKE autoscaler from failing pre-flight quota checks due to global GPU quota constraints.
 - **Security:** Strict. Never commit `.tfstate` files, use Workload Identity (never static service accounts).
 - **Learning Environment:** The user is actively learning. Always explain the code being added (e.g., *why* a specific Terraform resource is needed, or *how* Workload Identity solves a security problem).
 - **No Comments in Code:** Do not add comments directly inside the generated output code. Instead, use markdown text to explain the code snippets.

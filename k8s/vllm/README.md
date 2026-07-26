@@ -1,6 +1,6 @@
 # vLLM Kubernetes Manifests
 
-Deploys the vLLM OpenAI-compatible server configured for Qwen 2.5 Coder on GKE. It utilizes Workload Identity and a PVC to cache model weights across Spot instances.
+Deploys the vLLM OpenAI-compatible server configured for Qwen 2.5 Coder 14B AWQ on GKE. It utilizes Workload Identity and a PVC to cache model weights across instance reboots.
 
 ## Resource Inventory
 - `Namespace`: `vllm`
@@ -17,7 +17,7 @@ graph TD
         SVC[Service: vllm-service<br/>Port 8000]
         
         subgraph "Deployment: vllm-server"
-            Pod[vLLM Pod<br/>Qwen 2.5 Coder]
+            Pod[vLLM Pod<br/>Qwen 2.5 Coder 14B AWQ]
             KSA[ServiceAccount: vllm-ksa]
             Secret[Secret: vllm-api-key]
             
