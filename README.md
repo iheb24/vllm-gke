@@ -38,6 +38,63 @@ To make this viable for a personal developer environment, this project utilizes 
 - **Zonal Cluster:** Lives in a single zone (e.g., `europe-west4-b`). Management fee is **$0/mo** (Free Tier).
 Total idle cost drops from ~$800/mo (always-on enterprise) to **~$51.50/mo** (Zonal + KEDA).
 
+## Quick Start Deployment Guide
+
+Follow these steps to deploy your own scale-to-zero vLLM cluster:
+
+**1. Get your public IP address (for GKE authorized networks):**
+```bash
+curl ifconfig.me
+```
+
+**2. Set up your Terraform variables:**
+Create a file at `infra/environments/dev/terraform.tfvars`:
+```hcl
+project_id   = "YOUR_GCP_PROJECT_ID"
+my_public_ip = "YOUR_PUBLIC_IP"
+```
+
+**3. Deploy the Infrastructure:**
+```bash
+cd infra/environments/dev
+terraform init
+terraform apply
+```
+
+**4. Connect to your new cluster:**
+```bash
+gcloud container clusters get-credentials vllm-cluster --zone europe-west4-b --project YOUR_GCP_PROJECT_ID
+```
+
+**5. Install KEDA & vLLM:**
+```bash
+cd ../../../k8s
+./install_keda.sh
+helm upgrade --install vllm-release ./vllm-chart --namespace vllm --create-namespace
+```
+
+**6. Inject the API Key (Security Secret):**
+```bash
+kubectl create secret generic vllm-api-key --from-literal=api-key="your-secure-password" -n vllm
+```
+
+**7. Fire a request to trigger a Cold Start!**
+First, port-forward the KEDA interceptor proxy (which holds the requests):
+```bash
+kubectl port-forward svc/vllm-http-interceptor-proxy -n keda 8080:8080
+```
+Then, in a new terminal window, fire your request. *(Note: The request will hang for ~4 minutes while the GPU boots up!)*
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secure-password" \
+  -H "Host: localhost:8000" \
+  -d '{
+    "model": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
+    "messages": [{"role": "user", "content": "Write a hello world script in Python."}]
+  }'
+```
+
 ## Security and Pre-commit Hooks
 
 This project enforces strict security checks to prevent secrets from being leaked to the public repository. We use `pre-commit` to manage these hooks.
