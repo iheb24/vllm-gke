@@ -1,0 +1,32 @@
+namespace: vllm
+
+serviceAccount:
+  create: true
+  name: "vllm-ksa"
+  # This should match your GCP project ID
+  projectId: "YOUR_PROJECT_ID"
+
+pvc:
+  create: true
+  name: "vllm-cache-pvc"
+  size: "50Gi"
+  storageClass: "standard-rwo"
+
+model:
+  name: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+  quantization: "awq"
+  maxModelLen: "32768"
+  gpuMemoryUtilization: "0.95"
+
+image:
+  repository: "vllm/vllm-openai"
+  tag: "latest"
+
+scaling:
+  enabled: true
+  minReplicas: 0
+  maxReplicas: 1
+  # How long KEDA waits before scaling down after the last request finishes (in seconds)
+  scaledownPeriod: 300
+  # targetPendingRequests determines when to scale up. 1 means any pending request scales it up.
+  targetPendingRequests: 1

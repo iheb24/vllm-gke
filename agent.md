@@ -5,8 +5,11 @@ Welcome to the vLLM on GKE project. When working on this repository as an AI age
 ## 1. Project Context
 - **Objective:** Host a vLLM instance on Google Kubernetes Engine (GKE) to serve the **Qwen 2.5 Coder 14B AWQ** model.
 - **Model Specs:** Loading in AWQ 4-bit quantization to fit within a single 24GB L4 GPU, reserving enough VRAM for a massive 32K context window.
-- **Hardware Specs:** Target GKE node pool is `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM).
-- **Node Pool & Quotas:** The cluster is deployed in `europe-west4`. To avoid triggering a 'GCE quota exceeded' error, the GPU node pool must be strictly Zonal (e.g., `europe-west4-a`) with `max_node_count = 1`. Spot instances are optional (defaults to standard).
+- **Hardware Specs:** 
+  - GPU Pool: Target GKE node pool is `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM).
+  - System Pool: Must use `e2-standard-2` to guarantee sufficient CPU for KEDA operator and HTTP interceptor pods.
+- **Node Pool & Quotas:** The cluster is deployed as a **Zonal Cluster** (e.g., `europe-west4-b`) to optimize costs and avoid the Regional $73/mo control plane fee.
+- **Scale-to-Zero Architecture:** Uses `kedacore/keda` and `kedacore/keda-add-ons-http`. The vLLM Helm chart includes an `HTTPScaledObject` to intercept and hold requests while the GPU node provisions.
 
 ## 2. Security & Secrets Management
 - **Public Repository Rules:** This is a public repository. **NEVER** hardcode sensitive data, API keys, database passwords, or static Service Account credentials in any file.

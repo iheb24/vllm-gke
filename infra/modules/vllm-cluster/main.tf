@@ -12,7 +12,7 @@ terraform {
 # trivy:ignore:gcp-0056
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
-  location = var.region
+  location = "${var.region}-b"
   project  = var.project_id
 
   network    = var.network_name
@@ -48,12 +48,44 @@ resource "google_container_cluster" "primary" {
   }
 }
 
+resource "google_container_node_pool" "system_pool" {
+  name     = "system-pool"
+  location = "${var.region}-b"
+  cluster  = google_container_cluster.primary.name
+  project  = var.project_id
+
+  # A single cheap node running 24/7 to host KEDA and the HTTP Interceptor
+  node_count = 1
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  node_config {
+    machine_type    = "e2-standard-2"
+    image_type      = "COS_CONTAINERD"
+    service_account = google_service_account.vllm_sa.email
+
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+  }
+}
+
 resource "google_container_node_pool" "gpu_pool" {
-  name           = "gpu-pool"
-  location       = var.region
-  cluster        = google_container_cluster.primary.name
-  project        = var.project_id
-  node_locations = ["${var.region}-a"]
+  name     = "gpu-pool"
+  location = "${var.region}-b"
+  cluster  = google_container_cluster.primary.name
+  project  = var.project_id
 
   autoscaling {
     min_node_count = 0
@@ -70,7 +102,7 @@ resource "google_container_node_pool" "gpu_pool" {
   # trivy:ignore:gcp-0054
   node_config {
     machine_type = "g2-standard-8"
-    
+
     # Uncomment the line below to use Spot instances instead of Standard (On-Demand) instances
     # spot = true
 
