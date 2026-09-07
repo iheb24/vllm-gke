@@ -12,6 +12,19 @@ spec:
     metadata:
       labels:
         app: vllm-server
+      annotations:
+        ad.datadoghq.com/vllm.checks: |
+          {
+            "openmetrics": {
+              "instances": [
+                {
+                  "openmetrics_endpoint": "http://%%host%%:8000/metrics",
+                  "namespace": "vllm",
+                  "metrics": [".*"]
+                }
+              ]
+            }
+          }
     spec:
       serviceAccountName: vllm-ksa
       nodeSelector:
