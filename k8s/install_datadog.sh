@@ -27,6 +27,9 @@ helm upgrade --install datadog datadog/datadog \
     --set datadog.prometheusScrape.enabled=true \
     --set providers.gke.cos=true \
     --set datadog.systemProbe.enabled=false \
+    --set datadog.clusterName="vllm-cluster" \
+    --set datadog.kubeStateMetricsCore.enabled=true \
+    --set datadog.orchestratorExplorer.enabled=true \
     --wait
 
 echo "✅ Datadog installation complete!"
