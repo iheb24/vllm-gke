@@ -63,7 +63,7 @@ resource "google_container_node_pool" "system_pool" {
   }
 
   node_config {
-    machine_type    = "e2-standard-2"
+    machine_type    = "e2-standard-4"
     image_type      = "COS_CONTAINERD"
     service_account = google_service_account.vllm_sa.email
 
