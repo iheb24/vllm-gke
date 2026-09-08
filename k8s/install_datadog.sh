@@ -25,6 +25,8 @@ helm upgrade --install datadog datadog/datadog \
     --set datadog.apiKey=$DD_API_KEY \
     --set datadog.site=$DD_SITE \
     --set datadog.prometheusScrape.enabled=true \
+    --set providers.gke.cos=true \
+    --set datadog.systemProbe.enabled=false \
     --wait
 
 echo "✅ Datadog installation complete!"
