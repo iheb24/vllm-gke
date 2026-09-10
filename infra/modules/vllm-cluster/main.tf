@@ -87,8 +87,7 @@ resource "google_container_node_pool" "gpu_pool" {
   node_locations = [
     "${var.region}-a",
     "${var.region}-b",
-    "${var.region}-c",
-    "${var.region}-f"
+    "${var.region}-c"
   ]
   cluster  = google_container_cluster.primary.name
   project  = var.project_id
