@@ -9,6 +9,8 @@ This module provisions a VPC-native private GKE cluster, a dedicated `system-poo
 - `google_service_account.vllm_sa`: The GCP service account for the vLLM workload and cluster nodes.
 - `google_service_account_iam_binding.workload_identity_binding`: The IAM binding linking the Kubernetes service account to the GCP service account.
 - `google_project_iam_member.artifact_registry_reader`: Grants the node pool service account permission to pull custom proxy images from Google Cloud Artifact Registry.
+- `google_project_iam_member.compute_storage_admin`: Grants the Compute Engine default SA permission to use Cloud Build.
+- `google_project_iam_member.compute_artifact_writer`: Grants the Compute Engine default SA permission to push images to Artifact Registry.
 
 ## Architecture
 

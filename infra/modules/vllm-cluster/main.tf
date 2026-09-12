@@ -152,3 +152,21 @@ resource "google_project_iam_member" "artifact_registry_reader" {
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.vllm_sa.email}"
 }
+
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Grant Compute Engine default service account permissions for Cloud Build
+# trivy:ignore:gcp-0011
+resource "google_project_iam_member" "compute_storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
