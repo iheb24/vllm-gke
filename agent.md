@@ -9,7 +9,7 @@ Welcome to the vLLM on GKE project. When working on this repository as an AI age
   - GPU Pool: Target GKE node pool is `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM).
   - System Pool: Must use `e2-standard-2` to guarantee sufficient CPU for KEDA operator and HTTP interceptor pods.
 - **Node Pool & Quotas:** The cluster is deployed as a **Zonal Cluster** (e.g., `europe-west4-b`) to optimize costs and avoid the Regional $73/mo control plane fee.
-- **Scale-to-Zero Architecture:** Uses a custom Go proxy and a KEDA Datadog `ScaledObject` to intercept and hold requests while the GPU node provisions.
+- **Scale-to-Zero Architecture:** Uses a custom Go proxy and a KEDA Datadog `ScaledObject` to intercept and hold requests while the GPU node provisions. Requires `datadogSite` in KEDA auth for EU regions and `vllm_` prefix for metrics.
 
 ## 2. Security & Secrets Management
 - **Public Repository Rules:** This is a public repository. **NEVER** hardcode sensitive data, API keys, database passwords, or static Service Account credentials in any file.

@@ -1,6 +1,5 @@
 # vLLM on GKE Deployment
 
-
 Welcome to the `vllm-gke` project! 
 
 This repository contains the infrastructure as code (Terraform) and Kubernetes manifests to deploy a vLLM instance on Google Kubernetes Engine (GKE) with full scale-to-zero capabilities.
@@ -10,26 +9,29 @@ This repository contains the infrastructure as code (Terraform) and Kubernetes m
 - **Hardware:** GCP `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `europe-west4-b`.
 - **System Pool:** GCP `e2-standard-2` (dedicated to running KEDA and GKE system pods).
 - **Security:** Strict security utilizing Workload Identity and private network.
-- **Scale-to-Zero:** KEDA HTTP Add-on intercepts requests and scales the GPU node pool from 0 to 1, providing ~91% cost savings for idle periods.
+- **Scale-to-Zero:** A Custom Go Proxy intercepts requests, emitting metrics to Datadog which triggers KEDA to scale the GPU node pool from 0 to 1, providing ~91% cost savings for idle periods.
 
-### Scale-to-Zero Flow
+### Datadog-Driven Scale-to-Zero Flow
 ```mermaid
 sequenceDiagram
     participant Developer
-    participant KEDA_Proxy as KEDA HTTP Interceptor
-    participant HPA as KEDA Scaler (HPA)
-    participant GKE as GKE Autoscaler
+    participant Proxy as Custom Go Proxy
+    participant Datadog as Datadog Agent/API
+    participant KEDA as KEDA Autoscaler
+    participant GKE as GKE Cluster Autoscaler
     participant vLLM as vLLM Pod
 
-    Developer->>KEDA_Proxy: HTTP Request (Prompt)
-    KEDA_Proxy->>KEDA_Proxy: Hold Request in Queue
-    KEDA_Proxy->>HPA: Metric: Pending Requests > 0
-    HPA->>GKE: Scale Deployment to 1
+    Developer->>Proxy: HTTP Request (Prompt)
+    Proxy->>Proxy: active_requests++
+    Datadog-->>Proxy: Scrapes metric
+    KEDA-->>Datadog: Queries Datadog API
+    KEDA->>GKE: Scale Deployment to 1
     GKE->>GKE: Provision L4 GPU Node (~2.5 mins)
     GKE->>vLLM: Attach 50GB PVC & Start Pod (~1 min)
-    vLLM-->>KEDA_Proxy: Health Check Passes
-    KEDA_Proxy->>vLLM: Forward HTTP Request
+    vLLM-->>Proxy: Health Check Passes
+    Proxy->>vLLM: Forward HTTP Request
     vLLM-->>Developer: Stream LLM Response
+    Proxy->>Proxy: active_requests-- (cooldown begins)
 ```
 
 ## Cost Optimization (Zonal vs Regional)
@@ -66,34 +68,46 @@ terraform apply
 gcloud container clusters get-credentials vllm-cluster --zone europe-west4-b --project YOUR_GCP_PROJECT_ID
 ```
 
-**5. Install KEDA & vLLM:**
+**5. Install Datadog & KEDA:**
 ```bash
+export DD_API_KEY="your-api-key"
+export DD_APP_KEY="your-app-key"
+export DD_SITE="datadoghq.eu"
 cd ../../../k8s
+./install_datadog.sh
 ./install_keda.sh
-helm upgrade --install vllm-release ./vllm-chart --namespace vllm --create-namespace
 ```
 
-**6. Inject the API Key (Security Secret):**
+**6. Deploy vLLM with Datadog Keys:**
+```bash
+helm upgrade --install vllm ./vllm-chart --namespace vllm --create-namespace \
+  --set datadog.apiKey=$DD_API_KEY \
+  --set datadog.appKey=$DD_APP_KEY \
+  --set datadog.site=$DD_SITE
+```
+
+**7. Inject the API Key (Security Secret):**
 ```bash
 kubectl create secret generic vllm-api-key --from-literal=api-key="your-secure-password" -n vllm
 ```
 
-**7. Fire a request to trigger a Cold Start!**
-First, port-forward the KEDA interceptor proxy (which holds the requests):
+**8. Fire a request to trigger a Cold Start!**
+First, port-forward the Go Proxy (which holds the requests):
 ```bash
-kubectl port-forward svc/vllm-http-interceptor-proxy -n keda 8080:8080
+kubectl port-forward svc/vllm-proxy-service -n vllm 8080:8080
 ```
 Then, in a new terminal window, fire your request. *(Note: The request will hang for ~4 minutes while the GPU boots up!)*
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-secure-password" \
-  -H "Host: localhost:8000" \
   -d '{
     "model": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
     "messages": [{"role": "user", "content": "Write a hello world script in Python."}]
   }'
 ```
+
+For advanced Datadog configurations and scale-to-zero tuning, see the `docs/` folder.
 
 ## Security and Pre-commit Hooks
 
