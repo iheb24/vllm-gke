@@ -30,6 +30,7 @@ helm upgrade --install datadog datadog/datadog \
     --set datadog.clusterName="vllm-cluster" \
     --set datadog.kubeStateMetricsCore.enabled=true \
     --set datadog.orchestratorExplorer.enabled=true \
+    --set agents.tolerations[0].operator=Exists \
     --wait
 
 echo "✅ Datadog installation complete!"
