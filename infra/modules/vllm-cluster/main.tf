@@ -146,3 +146,9 @@ resource "google_service_account_iam_binding" "workload_identity_binding" {
     google_container_cluster.primary
   ]
 }
+
+resource "google_project_iam_member" "artifact_registry_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.vllm_sa.email}"
+}
