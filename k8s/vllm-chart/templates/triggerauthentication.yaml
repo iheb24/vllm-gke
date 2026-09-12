@@ -12,4 +12,7 @@ spec:
     - parameter: appKey
       name: {{ .Values.datadog.secretName }}
       key: appKey
+    - parameter: datadogSite
+      name: {{ .Values.datadog.secretName }}
+      key: datadogSite
 {{- end }}

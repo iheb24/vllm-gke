@@ -3,8 +3,7 @@ namespace: vllm
 serviceAccount:
   create: true
   name: "vllm-ksa"
-  # This should match your GCP project ID
-  projectId: "YOUR_PROJECT_ID"
+  projectId: "project-c4f86d90-75ff-4766-8cd"
 
 pvc:
   create: true
@@ -24,17 +23,18 @@ image:
 
 proxy:
   image:
-    repository: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/vllm-repo/vllm-proxy"
+    repository: "us-central1-docker.pkg.dev/project-c4f86d90-75ff-4766-8cd/vllm-repo/vllm-proxy"
     tag: "latest"
 
 datadog:
   secretName: "datadog-keda-auth"
-  apiKey: "YOUR_DATADOG_API_KEY"
-  appKey: "YOUR_DATADOG_APP_KEY"
+  # Keys will be injected via helm --set at deploy time
+  apiKey: ""
+  appKey: ""
+  site: "datadoghq.eu"
 
 scaling:
   enabled: true
   minReplicas: 0
   maxReplicas: 1
-  # How long KEDA waits before scaling down after the proxy active requests drops to 0
   scaledownPeriod: 300
