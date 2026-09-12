@@ -1,0 +1,25 @@
+{{- if .Values.scaling.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vllm-datadog-scaledobject
+  namespace: {{ .Values.namespace }}
+spec:
+  scaleTargetRef:
+    name: vllm-server
+    kind: Deployment
+    apiVersion: apps/v1
+  minReplicaCount: {{ .Values.scaling.minReplicas }}
+  maxReplicaCount: {{ .Values.scaling.maxReplicas }}
+  cooldownPeriod: {{ .Values.scaling.scaledownPeriod }}
+  pollingInterval: 15
+  triggers:
+    - type: datadog
+      metadata:
+        # The metric name based on what Datadog ingests from the Proxy /metrics endpoint
+        query: "max:vllm_proxy.vllm_proxy_active_requests{*}"
+        queryValue: "1"
+        type: "global"
+      authenticationRef:
+        name: keda-datadog-trigger-auth
+{{- end }}

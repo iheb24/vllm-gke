@@ -22,11 +22,19 @@ image:
   repository: "vllm/vllm-openai"
   tag: "latest"
 
+proxy:
+  image:
+    repository: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/vllm-repo/vllm-proxy"
+    tag: "latest"
+
+datadog:
+  secretName: "datadog-keda-auth"
+  apiKey: "YOUR_DATADOG_API_KEY"
+  appKey: "YOUR_DATADOG_APP_KEY"
+
 scaling:
   enabled: true
   minReplicas: 0
   maxReplicas: 1
-  # How long KEDA waits before scaling down after the last request finishes (in seconds)
+  # How long KEDA waits before scaling down after the proxy active requests drops to 0
   scaledownPeriod: 300
-  # targetPendingRequests determines when to scale up. 1 means any pending request scales it up.
-  targetPendingRequests: 1

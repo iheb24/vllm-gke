@@ -1,0 +1,15 @@
+{{- if .Values.scaling.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-datadog-trigger-auth
+  namespace: {{ .Values.namespace }}
+spec:
+  secretTargetRef:
+    - parameter: apiKey
+      name: {{ .Values.datadog.secretName }}
+      key: apiKey
+    - parameter: appKey
+      name: {{ .Values.datadog.secretName }}
+      key: appKey
+{{- end }}

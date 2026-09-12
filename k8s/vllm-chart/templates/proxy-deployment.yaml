@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-proxy
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-proxy
+  template:
+    metadata:
+      labels:
+        app: vllm-proxy
+      annotations:
+        # Datadog Agent Autodiscovery checks
+        ad.datadoghq.com/vllm-proxy.checks: |
+          {
+            "openmetrics": {
+              "instances": [
+                {
+                  "openmetrics_endpoint": "http://%%host%%:8080/metrics",
+                  "namespace": "vllm_proxy",
+                  "metrics": ["vllm_proxy_active_requests"]
+                }
+              ]
+            }
+          }
+    spec:
+      containers:
+        - name: vllm-proxy
+          image: "{{ .Values.proxy.image.repository }}:{{ .Values.proxy.image.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TARGET_URL
+              # Target the vllm-service created by the chart
+              value: "http://vllm-service.{{ .Values.namespace }}.svc.cluster.local:8000"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

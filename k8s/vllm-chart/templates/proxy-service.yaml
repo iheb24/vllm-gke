@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-proxy-service
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: vllm-proxy
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

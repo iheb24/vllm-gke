@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Setting up KEDA and the KEDA HTTP Add-on via Helm"
+echo "🚀 Setting up KEDA via Helm"
 
 # 1. Add KEDA Helm Repo
 echo "📦 Adding KEDA Helm repository..."
@@ -14,11 +14,6 @@ helm upgrade --install keda kedacore/keda \
     --create-namespace \
     --wait
 
-# 3. Install KEDA HTTP Add-on
-echo "⚙️ Installing KEDA HTTP Add-on (for 0-to-1 routing)..."
-helm upgrade --install http-add-on kedacore/keda-add-ons-http \
-    --namespace keda \
-    --wait
-
 echo "✅ KEDA installation complete!"
+echo "Note: The KEDA HTTP Add-on was removed. We are using our custom proxy for scale-to-zero instead."
 echo "Next step: Deploy your new vLLM Helm chart."
