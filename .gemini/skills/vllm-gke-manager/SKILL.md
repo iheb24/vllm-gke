@@ -14,12 +14,31 @@ When generating code or answering questions about this project, keep in mind:
 - **Node Pool Target:** `g2-standard-8` (1x L4 GPU) on Standard Instances (Spot is optional).
 - **System Pool Target:** `e2-standard-2` to host KEDA and GKE system pods.
 - **Location & Quotas:** Deployed as a **Zonal Cluster** in `europe-west4-b`.
-- **Scale-to-Zero:** Relies on `kedacore/keda` and `kedacore/keda-add-ons-http` for intercepting traffic and scaling the GPU pool from 0 to 1.
+- **Scale-to-Zero:** Relies on a Custom Go Proxy (`vllm-proxy`) and `kedacore/keda` with a Datadog trigger. The proxy intercepts and holds synchronous HTTP traffic while the GPU provisions.
 - **Security:** Strict. Never commit `.tfstate` files, use Workload Identity (never static service accounts).
 - **Learning Environment:** The user is actively learning. Always explain the code being added (e.g., *why* a specific Terraform resource is needed, or *how* Workload Identity solves a security problem).
 - **No Comments in Code:** Do not add comments directly inside the generated output code. Instead, use markdown text to explain the code snippets.
 
-## 2. Workflows
+## 2. Known Problems & Architecture Edge Cases
+
+When assisting the user with observability or scaling, remember these critical constraints that were resolved during development:
+
+1. **Synchronous HTTP constraints (Why Redis/HTTP Add-on failed):**
+   Clients like Cline require a synchronously held HTTP connection. Asynchronous queues (Redis) drop the connection, and KEDA HTTP Add-on is often too heavy/complex. The solution is the custom `vllm-proxy` which holds the connection open while exposing an `active_requests` Prometheus gauge for Datadog.
+
+2. **KEDA Datadog Authentication (403 Forbidden on EU Sites):**
+   KEDA defaults to `datadoghq.com`. If the user is on the EU site (`datadoghq.eu`), KEDA will return `403 Forbidden` unless `datadogSite: datadoghq.eu` is explicitly mapped through the `TriggerAuthentication` Kubernetes Secret.
+
+3. **Datadog OpenMetrics v2 Metric Renaming:**
+   Datadog's automatic Prometheus scraper (`prometheus_pods`) modifies metric prefixes by replacing colons with underscores. A metric emitted by vLLM as `vllm:kv_cache_usage_perc` is ingested as `vllm_kv_cache_usage_perc`. Always use `vllm_` prefixes in Datadog Dashboard queries.
+
+4. **vLLM Cold Start Metrics Quirk:**
+   vLLM does *not* emit performance metrics (e.g., `vllm_time_to_first_token_seconds.sum`) until the *first* request has fully generated. During a cold start (scale 0 to 1), Datadog dashboards will legitimately show "no data" for these metrics until the GPU finishes loading the model (3-4 mins) and streams the response.
+
+5. **GCP IAM for Custom Images:**
+   To pull the custom proxy image from GCP Artifact Registry, the default GKE compute node service account MUST have the `roles/artifactregistry.reader` role.
+
+## 3. Workflows
 
 When the user asks you to perform one of these actions, follow these specific steps:
 
@@ -43,5 +62,5 @@ When the user asks you to perform one of these actions, follow these specific st
    - An inventory list of the resources it creates.
    - A small mermaid architecture diagram illustrating the component.
 
-## 3. Remote State
+## 4. Remote State
 Always ensure that Terraform blocks use the `gcs` backend. If a `backend "gcs"` block is missing, immediately prompt the user to add it to prevent local state files from being created and potentially leaked.
