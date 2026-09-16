@@ -1,0 +1,52 @@
+{{- if .Values.slm.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slm-server
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slm-server
+  template:
+    metadata:
+      labels:
+        app: slm-server
+    spec:
+      containers:
+        - name: llama-server
+          image: "{{ .Values.slm.image.repository }}:{{ .Values.slm.image.tag }}"
+          args:
+            - "--hf-repo={{ .Values.slm.hfRepo }}"
+            - "--hf-file={{ .Values.slm.hfFile }}"
+            - "--host=0.0.0.0"
+            - "--port=8080"
+            - "--ctx-size={{ .Values.slm.ctxSize }}"
+            - "--threads={{ .Values.slm.threads }}"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: {{ .Values.slm.resources.requests.cpu | quote }}
+              memory: {{ .Values.slm.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.slm.resources.limits.cpu | quote }}
+              memory: {{ .Values.slm.resources.limits.memory | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+{{- end }}
