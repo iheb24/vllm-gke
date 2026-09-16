@@ -6,11 +6,39 @@ Welcome to the `vllm-gke` project!
 This repository contains the infrastructure as code (Terraform) and Kubernetes manifests to deploy a vLLM instance on Google Kubernetes Engine (GKE) with full scale-to-zero capabilities.
 
 ## Architecture Highlights
-- **Model:** Qwen 2.5 Coder 14B AWQ.
+- **Model:** Qwen 2.5 Coder 14B AWQ (GPU tier) + Qwen3-4B Q4_K_M on llama.cpp (CPU tier).
 - **Hardware:** GCP `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `europe-west4-b`.
-- **System Pool:** GCP `e2-standard-2` (dedicated to running KEDA and GKE system pods).
+- **System Pool:** GCP `e2-standard-4` (KEDA, HTTP interceptor, semantic router stack, CPU SLM tier).
+- **Routing:** vLLM Semantic Router (ModernBERT classifier) behind Envoy Gateway / AI Gateway sends casual traffic to the CPU tier and complex/agentic traffic to the GPU tier, biased toward escalation.
 - **Security:** Strict security utilizing Workload Identity and private network.
 - **Scale-to-Zero:** KEDA HTTP Add-on intercepts requests and scales the GPU node pool from 0 to 1, providing ~91% cost savings for idle periods.
+
+### Tiered Routing Topology
+```mermaid
+flowchart LR
+    subgraph Clients
+        ChatUI[Browser Chat UI<br/>model: auto]
+        Cline[Cline IDE<br/>pinned model]
+    end
+
+    subgraph SystemPool["System Pool (e2-standard-4, always on)"]
+        Envoy[Envoy Gateway +<br/>Semantic Router ExtProc]
+        SLM[slm-server<br/>Qwen3-4B, llama.cpp]
+        Interceptor[KEDA HTTP Interceptor]
+    end
+
+    subgraph GPUPool["GPU Pool (spot L4, scales to zero)"]
+        VLLM[vLLM 14B AWQ]
+    end
+
+    Cline -->|pinned model, direct| Interceptor
+    ChatUI --> Envoy
+    Envoy -->|casual| SLM
+    Envoy -->|complex / agentic| Interceptor
+    Interceptor -->|holds request, 0-1 scale| VLLM
+```
+
+See [docs/semantic-routing-walkthrough.md](docs/semantic-routing-walkthrough.md) for the full design rationale and request lifecycle.
 
 ### Scale-to-Zero Flow
 ```mermaid
@@ -36,7 +64,7 @@ sequenceDiagram
 To make this viable for a personal developer environment, this project utilizes a **Zonal Cluster** instead of a Regional one.
 - **Regional Cluster:** Highly available across 3 zones. Costs ~$73/mo just for the management fee.
 - **Zonal Cluster:** Lives in a single zone (e.g., `europe-west4-b`). Management fee is **$0/mo** (Free Tier).
-Total idle cost drops from ~$800/mo (always-on enterprise) to **~$51.50/mo** (Zonal + KEDA).
+Total idle cost drops from ~$800/mo (always-on enterprise) to **~$100/mo** (Zonal + KEDA + always-on system pool sized for the CPU tier and router).
 
 ## Quick Start Deployment Guide
 
@@ -78,7 +106,15 @@ helm upgrade --install vllm-release ./vllm-chart --namespace vllm --create-names
 kubectl create secret generic vllm-api-key --from-literal=api-key="your-secure-password" -n vllm
 ```
 
-**7. Fire a request to trigger a Cold Start!**
+**7. Install the semantic routing stack (optional but recommended):**
+```bash
+./install_semantic_routing.sh
+```
+
+**8. Fire a request to trigger a Cold Start!**
+
+*Agentic client (Cline IDE, pinned model — bypasses the router):*
+
 First, port-forward the KEDA interceptor proxy (which holds the requests):
 ```bash
 kubectl port-forward svc/vllm-http-interceptor-proxy -n keda 8080:8080
@@ -94,6 +130,27 @@ curl -X POST http://localhost:8080/v1/chat/completions \
     "messages": [{"role": "user", "content": "Write a hello world script in Python."}]
   }'
 ```
+
+*Chat client (unpinned, routed by the semantic router):*
+
+Port-forward the Envoy gateway service:
+```bash
+export ENVOY_SERVICE=$(kubectl get svc -n vllm \
+  --selector=gateway.envoyproxy.io/owning-gateway-name=semantic-router \
+  -o jsonpath='{.items[0].metadata.name}')
+kubectl port-forward -n vllm svc/$ENVOY_SERVICE 8081:80
+```
+Then send a request with `model: "auto"` — the router picks the tier:
+```bash
+curl -X POST http://localhost:8081/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secure-password" \
+  -d '{
+    "model": "auto",
+    "messages": [{"role": "user", "content": "Tell me a fun fact about octopuses."}]
+  }'
+```
+Casual prompts are answered by the CPU tier without waking the GPU.
 
 ## Security and Pre-commit Hooks
 
