@@ -11,6 +11,7 @@ spec:
     - vllm-service.{{ .Values.namespace }}.svc.cluster.local
     - localhost
     - localhost:8000
+    - localhost:8080
   scaleTargetRef:
     # Points to the deployment we want to scale
     name: vllm-server
