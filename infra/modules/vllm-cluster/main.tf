@@ -54,7 +54,7 @@ resource "google_container_node_pool" "system_pool" {
   cluster  = google_container_cluster.primary.name
   project  = var.project_id
 
-  # A single cheap node running 24/7 to host KEDA and the HTTP Interceptor
+  # A single node running 24/7 hosting KEDA, the HTTP interceptor, the semantic router stack, and the CPU SLM tier
   node_count = 1
 
   management {
@@ -63,7 +63,7 @@ resource "google_container_node_pool" "system_pool" {
   }
 
   node_config {
-    machine_type    = "e2-standard-2"
+    machine_type    = var.system_machine_type
     image_type      = "COS_CONTAINERD"
     service_account = google_service_account.vllm_sa.email
 
