@@ -117,7 +117,7 @@ kubectl create secret generic vllm-api-key --from-literal=api-key="your-secure-p
 
 First, port-forward the KEDA interceptor proxy (which holds the requests):
 ```bash
-kubectl port-forward svc/vllm-http-interceptor-proxy -n keda 8080:8080
+kubectl port-forward svc/keda-add-ons-http-interceptor-proxy -n keda 8080:8080
 ```
 Then, in a new terminal window, fire your request. *(Note: The request will hang for ~4 minutes while the GPU boots up!)*
 ```bash
@@ -135,10 +135,10 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 Port-forward the Envoy gateway service:
 ```bash
-export ENVOY_SERVICE=$(kubectl get svc -n vllm \
-  --selector=gateway.envoyproxy.io/owning-gateway-name=semantic-router \
+export ENVOY_SERVICE=$(kubectl get svc -n envoy-gateway-system \
+  --selector=gateway.envoyproxy.io/owning-gateway-namespace=vllm,gateway.envoyproxy.io/owning-gateway-name=semantic-router \
   -o jsonpath='{.items[0].metadata.name}')
-kubectl port-forward -n vllm svc/$ENVOY_SERVICE 8081:80
+kubectl port-forward -n envoy-gateway-system svc/$ENVOY_SERVICE 8081:80
 ```
 Then send a request with `model: "auto"` — the router picks the tier:
 ```bash

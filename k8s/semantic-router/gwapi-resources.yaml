@@ -83,7 +83,7 @@ metadata:
 spec:
   endpoints:
   - fqdn:
-      hostname: vllm-http-interceptor-proxy.keda.svc.cluster.local
+      hostname: keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
       port: 8080
 ---
 apiVersion: aigateway.envoyproxy.io/v1alpha1
@@ -157,7 +157,7 @@ spec:
             request_body_mode: BUFFERED
             request_header_mode: SEND
             request_trailer_mode: SKIP
-            response_body_mode: BUFFERED
+            response_body_mode: NONE
             response_header_mode: SEND
             response_trailer_mode: SKIP
     type: type.googleapis.com/envoy.config.listener.v3.Listener

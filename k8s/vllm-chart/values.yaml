@@ -36,8 +36,8 @@ slm:
   image:
     repository: "ghcr.io/ggml-org/llama.cpp"
     tag: "server"
-  hfRepo: "Qwen/Qwen3-4B-Instruct-2507-GGUF"
-  hfFile: "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+  hfRepo: "Qwen/Qwen3-4B-GGUF"
+  hfFile: "Qwen3-4B-Q4_K_M.gguf"
   ctxSize: "8192"
   threads: "3"
   resources:

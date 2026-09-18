@@ -10,7 +10,7 @@ config:
         backend_refs:
           - name: gpu-vllm
             provider: vllm
-            endpoint: vllm-http-interceptor-proxy.keda.svc.cluster.local:8080
+            endpoint: keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local:8080
             weight: 1
       - name: qwen3-4b-cpu
         backend_refs:
@@ -90,6 +90,18 @@ config:
             - implement
             - architecture
             - optimize
+            - schema
+            - migration
+            - migrations
+            - database
+            - sql
+            - docker
+            - kubernetes
+            - function
+            - script
+            - api
+            - pytest
+            - deploy
           case_sensitive: false
       domains:
         - name: business

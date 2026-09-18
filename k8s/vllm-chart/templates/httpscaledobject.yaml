@@ -9,6 +9,7 @@ spec:
   # This can be the internal service name or external ingress hostname.
   hosts: 
     - vllm-service.{{ .Values.namespace }}.svc.cluster.local
+    - keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
     - localhost
     - localhost:8000
     - localhost:8080

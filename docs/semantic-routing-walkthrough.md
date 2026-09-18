@@ -153,12 +153,32 @@ checkpoint compares this against the GPU wakes the tier avoids.
 | `k8s/vllm-chart/templates/slm-*.yaml` | CPU tier Deployment + Service |
 | `k8s/vllm-chart/templates/httpscaledobject.yaml` | Interceptor host list incl. `localhost:8080` |
 
-## Known verification points (Phase 5)
+## Verification results (validated on the live cluster)
 
-- Confirm the router emits model names (not LoRA-style aliases) into
-  `x-ai-eg-model` — the route rules match on the full names.
-- Confirm the client's `Authorization: Bearer` header passes through the gateway
-  to vLLM; if the AI Gateway strips it, add a `BackendSecurityPolicy` referencing
-  the existing `vllm-api-key` secret.
-- If the gateway's upstream Host ever differs from the `hosts` list, prefer
-  extending `hosts` over adding Envoy hostname rewrites.
+- The router emits the **model name** (not a LoRA-style alias) into
+  `x-ai-eg-model`; the route rules match on the full names. Confirmed in router
+  logs (`routing_decision` events) and Envoy access logs.
+- The client's `Authorization: Bearer` header passes through the gateway to
+  vLLM; no `BackendSecurityPolicy` is needed.
+- Envoy rewrites the upstream `:authority` to the FQDN backend hostname, so the
+  `HTTPScaledObject` `hosts` list includes
+  `keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local` (the interceptor
+  returns 404 for unmatched hosts). Port-forwarded traffic matches
+  `localhost:8080`.
+- ExtProc `response_body_mode` must be `NONE`: llama.cpp adds a non-standard
+  `timings` field to responses, which the router's strict response decoder
+  rejects with a 502. Skipping response bodies also removes this class of
+  incompatibility for any future backend. Note: `SKIP` is **not** a valid body
+  mode (headers only) — an invalid value silently drops the filter from the
+  listener and every request falls through to the gateway's direct-response
+  404/503.
+- The interceptor proxy service installed by the current `keda-add-ons-http`
+  chart is named `keda-add-ons-http-interceptor-proxy`, not the older
+  `vllm-http-interceptor-proxy` used in earlier revisions of this repo.
+- First wake with a cold PVC took 7m31s (pod start + ~10 GB model download +
+  vLLM load). Subsequent wakes reuse the PVC and match the documented 3-4 min.
+- Escalation bias was tuned once in production: "billing schema + migrations"
+  initially classified as business/casual and hit the CPU tier, so code-adjacent
+  keywords (schema, migrations, sql, docker, kubernetes, function, api, ...)
+  were added to the `agentic` signal. Retest: complex prompts → GPU, casual
+  prompts → CPU.
