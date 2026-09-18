@@ -113,34 +113,30 @@ kubectl create secret generic vllm-api-key --from-literal=api-key="your-secure-p
 
 **8. Fire a request to trigger a Cold Start!**
 
-*Agentic client (Cline IDE, pinned model — bypasses the router):*
-
-First, port-forward the KEDA interceptor proxy (which holds the requests):
-```bash
-kubectl port-forward svc/keda-add-ons-http-interceptor-proxy -n keda 8080:8080
-```
-Then, in a new terminal window, fire your request. *(Note: The request will hang for ~4 minutes while the GPU boots up!)*
-```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-secure-password" \
-  -H "Host: localhost:8000" \
-  -d '{
-    "model": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
-    "messages": [{"role": "user", "content": "Write a hello world script in Python."}]
-  }'
-```
-
-*Chat client (unpinned, routed by the semantic router):*
-
-Port-forward the Envoy gateway service:
+All clients go through the semantic router. Port-forward the Envoy gateway service:
 ```bash
 export ENVOY_SERVICE=$(kubectl get svc -n envoy-gateway-system \
   --selector=gateway.envoyproxy.io/owning-gateway-namespace=vllm,gateway.envoyproxy.io/owning-gateway-name=semantic-router \
   -o jsonpath='{.items[0].metadata.name}')
 kubectl port-forward -n envoy-gateway-system svc/$ENVOY_SERVICE 8081:80
 ```
-Then send a request with `model: "auto"` — the router picks the tier:
+
+*Agentic client (Cline IDE):* point Cline's OpenAI-compatible provider at
+`http://localhost:8081/v1` with the pinned model
+`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`. The router keeps pinned GPU traffic on
+the GPU tier (code prompts also classify as code → GPU under the escalation
+bias). *(Note: the first request will hang for ~4 minutes while the GPU boots up!)*
+```bash
+curl -X POST http://localhost:8081/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secure-password" \
+  -d '{
+    "model": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
+    "messages": [{"role": "user", "content": "Write a hello world script in Python."}]
+  }'
+```
+
+*Chat client (unpinned, classified by the router):* send `model: "auto"` — the router picks the tier:
 ```bash
 curl -X POST http://localhost:8081/v1/chat/completions \
   -H "Content-Type: application/json" \

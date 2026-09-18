@@ -8,10 +8,10 @@ system pool, GPU at zero).
 | Item | Monthly (est.) | Notes |
 |---|---|---|
 | System pool e2-standard-2 → e2-standard-4 | +~$49 | Router stack + CPU SLM tier live here |
-| Envoy gateway LoadBalancer (34.91.66.105) | +~$18 | Public L4 LB created by the Gateway |
+| Envoy gateway LoadBalancer | $0 | Removed: `envoyService.type: ClusterIP`, no public LB |
 | 50 Gi standard PD (vllm-cache-pvc) | ~$2 | Unchanged, persists across GPU scale-downs |
 
-New idle total: **~$120/mo** (was ~$51.50/mo). The trade: casual traffic no longer
+New idle total: **~$100/mo** (was ~$51.50/mo). The trade: casual traffic no longer
 wakes the GPU.
 
 ## GPU wake costs (variable)
@@ -26,10 +26,7 @@ wakes the GPU.
 
 1. Uncomment `spot = true` on the GPU pool (interruptible is acceptable for a
    dev environment; the interceptor simply re-holds on retry).
-2. Decide on the public LB: either accept it (needed if the chat UI is exposed),
-   switch the Gateway's Envoy service to an internal LB, or remove it and use
-   port-forward only.
-3. After a representative week, compare GPU wake frequency against pre-router
+2. After a representative week, compare GPU wake frequency against pre-router
    baselines using `routing_decision` events in the semantic-router logs
    (`router_replay` keeps them for 30 days). If the CPU tier doesn't measurably
    reduce wakes, revisit the decision config or the tier itself.

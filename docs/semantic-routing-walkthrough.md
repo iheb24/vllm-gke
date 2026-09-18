@@ -90,13 +90,31 @@ served model. The router's GPU model entry is named exactly
 any rewriting. The CPU tier (llama.cpp) ignores the model name, so its alias
 `qwen3-4b-cpu` is cosmetic.
 
-### Why Cline bypasses the router
+### Why all traffic goes through the router
 
-A pinned model name is the strongest and cheapest routing signal. Cline talks
-directly to the KEDA interceptor (as it did before this evolution), which keeps
-the GPU cold-start path free of extra hops: no ExtProc classification latency, no
-gateway timeout to tune for the 3-4 minute hold. The router only classifies
-**unpinned** traffic (`model: "auto"`) from the chat UI.
+An earlier revision let Cline bypass the router and hit the KEDA interceptor
+directly (pinned model = routing decision already known, one less hop on the
+cold-start path). The final design routes **every** client through the gateway
+instead: a single entry point gives one place for auth, logging, and future
+policy, and the decision config guarantees the same outcome anyway — pinned GPU
+traffic keeps its model name, and code prompts classify as code → GPU under the
+escalation bias. The router only *classifies* when the model is unpinned
+(`model: "auto"`); a pinned model name flows through to the matching
+`AIGatewayRoute` rule.
+
+### Why the CPU tier also requires the API key
+
+Both backends are OpenAI-compatible servers reachable through the same gateway,
+so both must enforce the same Bearer token. vLLM uses its native `VLLM_API_KEY`;
+llama.cpp gets the same secret via the `LLAMA_API_KEY` env var (`--api-key`
+equivalent). One key, both tiers.
+
+### Why the gateway has no public IP
+
+Envoy Gateway defaults the data plane Service to `type: LoadBalancer`, which on
+GKE provisions a **public** L4 load balancer — wrong for this private stack (and
+~$18/mo). The `EnvoyProxy` resource sets `envoyService.type: ClusterIP`, so the
+gateway is only reachable inside the VPC or via `kubectl port-forward`.
 
 ### Why the interceptor needed a new host
 
