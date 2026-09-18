@@ -183,13 +183,17 @@ checkpoint compares this against the GPU wakes the tier avoids.
   `keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local` (the interceptor
   returns 404 for unmatched hosts). Port-forwarded traffic matches
   `localhost:8080`.
-- ExtProc `response_body_mode` must be `NONE`: llama.cpp adds a non-standard
-  `timings` field to responses, which the router's strict response decoder
-  rejects with a 502. Skipping response bodies also removes this class of
-  incompatibility for any future backend. Note: `SKIP` is **not** a valid body
-  mode (headers only) — an invalid value silently drops the filter from the
-  listener and every request falls through to the gateway's direct-response
-  404/503.
+- ExtProc `response_body_mode` must be `NONE` **and** `allow_mode_override` must
+  be `false`: llama.cpp adds a non-standard `timings` field to responses (and to
+  the final streaming chunk), which the router's strict response decoder rejects.
+  With overrides allowed, the router opts back into response bodies per request
+  and streaming clients receive a terminal `invalid_upstream_json` SSE error
+  instead of `[DONE]` (this is what made Roo Code hang on "API Request...").
+  With both settings, response-side router features (semantic cache, stream
+  reconstruction) are off — acceptable, we use request-side classification only.
+  Note: `SKIP` is **not** a valid body mode (headers only) — an invalid value
+  silently drops the filter from the listener and every request falls through to
+  the gateway's direct-response 404/503.
 - The interceptor proxy service installed by the current `keda-add-ons-http`
   chart is named `keda-add-ons-http-interceptor-proxy`, not the older
   `vllm-http-interceptor-proxy` used in earlier revisions of this repo.
