@@ -1,44 +1,49 @@
-# Cost Checkpoint — Semantic Routing Evolution
+# Cost Model
 
-Baseline (pre-router, from README): ~$51.50/mo idle (zonal cluster, e2-standard-2
-system pool, GPU at zero).
-
-## New fixed costs
+## Fixed monthly costs
 
 | Item | Monthly (est.) | Notes |
 |---|---|---|
-| System pool e2-standard-2 → e2-standard-4 | +~$49 | Router stack + CPU SLM tier live here |
-| Envoy gateway LoadBalancer | $0 | Removed: `envoyService.type: ClusterIP`, no public LB |
-| 50 Gi standard PD (vllm-cache-pvc) | ~$2 | Unchanged, persists across GPU scale-downs |
+| Zonal control plane | $0 | Free tier (zonal cluster) |
+| System pool e2-standard-4 | ~$98 | Runs KEDA, interceptor, Envoy stack, router, CPU tier |
+| 50 Gi standard PD (vllm-cache-pvc) | ~$2 | Model cache, persists across GPU scale-downs |
+| Envoy gateway LB | $0 | ClusterIP; no load balancer provisioned |
+| **Total idle** | **~$100** | GPU at zero |
 
-New idle total: **~$100/mo** (was ~$51.50/mo). The trade: casual traffic no longer
-wakes the GPU.
+Before the routing tier the idle cost was ~$51.50/mo (e2-standard-2). The
+increase of ~$49/mo is the system pool resize required to host the router stack
+and the CPU model.
 
-## GPU wake costs (variable)
+## Variable costs (GPU awake)
 
-- On-demand `g2-standard-8`: ~$0.75/hr while awake. **Spot is still commented
-  out** in `infra/modules/vllm-cluster/main.tf` — enabling it cuts this ~3x.
-- First wake with a cold PVC measured 7m31s; warm-PVC wakes match the documented
-  3-4 min. Every wake carries a minimum ~10-15 min of node time (provision +
-  300s scaledownPeriod + drain).
+| Item | Rate | Notes |
+|---|---|---|
+| g2-standard-8 on-demand | ~$0.75/h | Billed while the GPU node exists |
+| g2-standard-8 spot | ~$0.22/h | Not enabled; `spot = true` is commented out in `infra/modules/vllm-cluster/main.tf` |
 
-## Open cost actions
+Each GPU wake carries a minimum node lifetime: provision time (~2.5 min) +
+workload + 300 s `scaledownPeriod` + drain. Budget ~10-15 min minimum per wake
+even for one prompt.
 
-1. Uncomment `spot = true` on the GPU pool (interruptible is acceptable for a
-   dev environment; the interceptor simply re-holds on retry).
-2. After a representative week, compare GPU wake frequency against pre-router
-   baselines using `routing_decision` events in the semantic-router logs
-   (`router_replay` keeps them for 30 days). If the CPU tier doesn't measurably
-   reduce wakes, revisit the decision config or the tier itself.
+## Measured timings
 
-## Validation evidence (2026-09-18)
+| Event | Duration |
+|---|---|
+| GPU wake, cold PVC (first model download) | 7m31s |
+| GPU wake, warm PVC | 2m56s |
+| CPU tier answer, short prompt | 1-3 s |
+| CPU tier prompt ingestion | ~20-30 tok/s (shared 4 vCPU node) |
 
-- Casual prompts (recipe, history, finance, travel) → `qwen3-4b-cpu`, GPU stayed
-  at 0 replicas.
-- Code/agentic prompts (async refactor, race-condition debug, schema design,
-  framework migration) → `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`, interceptor held
-  the request during cold start, response streamed, scale-down to 0 after 300s
-  idle confirmed.
-- One misroute caught during tuning (billing schema → CPU via business domain);
-  fixed by extending the `agentic` keyword signal. Escalation bias verified
-  after the fix.
+## Cost controls
+
+1. Enable spot on the GPU pool: uncomment `spot = true` in
+   `infra/modules/vllm-cluster/main.tf`. Spot preemption is acceptable here;
+   the interceptor re-holds interrupted requests.
+2. Keep the gateway on ClusterIP. A public LB adds ~$18/mo and exposes the
+   endpoints.
+3. Routing effectiveness is measurable: `routing_decision` events in the
+   router logs (retained 30 days by `router_replay`) show how many requests
+   the CPU tier absorbed. Compare GPU wake frequency against pre-router
+   baselines after a representative period. If the CPU tier does not
+   measurably reduce wakes, revisit the decision rules in
+   `k8s/semantic-router/values.yaml`.

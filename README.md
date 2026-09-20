@@ -121,11 +121,10 @@ export ENVOY_SERVICE=$(kubectl get svc -n envoy-gateway-system \
 kubectl port-forward -n envoy-gateway-system svc/$ENVOY_SERVICE 8081:80
 ```
 
-*Agentic client (Cline IDE):* point Cline's OpenAI-compatible provider at
-`http://localhost:8081/v1` with the pinned model
-`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`. The router keeps pinned GPU traffic on
-the GPU tier (code prompts also classify as code → GPU under the escalation
-bias). *(Note: the first request will hang for ~4 minutes while the GPU boots up!)*
+*Agentic client (Cline IDE — GPU tier only):* point Cline's OpenAI-compatible
+provider at `http://localhost:8081/v1` with model
+`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`. Cline always uses the 14B; the router
+honors the pinned name without classification (`model_specified`). *(Note: the first request will hang for ~4 minutes while the GPU boots up!)*
 ```bash
 curl -X POST http://localhost:8081/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -136,7 +135,7 @@ curl -X POST http://localhost:8081/v1/chat/completions \
   }'
 ```
 
-*Chat client (unpinned, classified by the router):* send `model: "auto"` — the router picks the tier:
+*Chat client:* send `model: "auto"` — the router picks the tier:
 ```bash
 curl -X POST http://localhost:8081/v1/chat/completions \
   -H "Content-Type: application/json" \

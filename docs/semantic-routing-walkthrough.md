@@ -1,206 +1,186 @@
-# Semantic Routing Walkthrough
+# Semantic Routing Architecture
 
-This document explains the tiered routing stack added on top of the scale-to-zero
-vLLM deployment: what each new component is, why it exists, and how traffic flows.
+Technical reference for the tiered routing stack. For day-to-day operation see
+`implementation-guide.md`. For cost data see `cost-checkpoint.md`.
 
 ## Topology
 
 ```mermaid
 flowchart LR
     subgraph Clients
-        ChatUI[Browser Chat UI<br/>model: auto]
-        Cline[Cline IDE<br/>pinned model]
+        UI[Browser chat UI<br/>auto / small / big]
+        Cline[Cline IDE<br/>14B only]
     end
 
     subgraph SystemPool["System Pool (e2-standard-4, always on)"]
-        Envoy[Envoy Gateway<br/>data plane]
-        SR[Semantic Router ExtProc<br/>ModernBERT classifiers]
+        Envoy[Envoy Gateway<br/>data plane, ClusterIP]
+        SR[Semantic Router ExtProc<br/>ModernBERT classifier]
         SLM[slm-server<br/>Qwen3-4B Q4_K_M, llama.cpp]
         Interceptor[KEDA HTTP Interceptor]
     end
 
-    subgraph GPUPool["GPU Pool (spot L4, scales to zero)"]
+    subgraph GPUPool["GPU Pool (g2-standard-8 L4, scales to zero)"]
         VLLM[vLLM Qwen2.5-Coder-14B-AWQ]
     end
 
-    Cline -->|direct, pinned model| Interceptor
-    ChatUI --> Envoy
+    UI --> Envoy
+    Cline --> Envoy
     Envoy <-->|ext_proc gRPC| SR
     Envoy -->|qwen3-4b-cpu| SLM
     Envoy -->|Qwen2.5-Coder-14B| Interceptor
     Interceptor -->|holds request, triggers 0-1 scale| VLLM
 ```
 
-## Why these components
+## Components
 
-### Why a semantic router at all
+| Component | Namespace | Role |
+|---|---|---|
+| Envoy Gateway (data plane) | envoy-gateway-system | HTTP listener, buffering, route selection |
+| Envoy AI Gateway (controller) | envoy-ai-gateway-system | OpenAI API translation, model header extraction |
+| vLLM Semantic Router | vllm-semantic-router-system | ExtProc classifier, tier selection |
+| slm-server | vllm | CPU tier, Qwen3-4B Q4_K_M on llama.cpp, 1 replica always warm |
+| vllm-server | vllm | GPU tier, Qwen2.5-Coder-14B-AWQ, scaled 0-1 by KEDA |
+| KEDA HTTP add-on | keda | Holds requests during GPU cold start, pending-request scaling |
 
-The GPU tier costs real money per wake (spot L4 provisioning + 3-4 min cold start)
-and the whole point of the stack is to keep it at zero when the workload does not
-need a 14B model. A classifier that reads each request and picks a tier lets casual
-chat stay on a cheap CPU model while agentic coding work escalates to the GPU.
+## Routing model
 
-### Why vLLM Semantic Router
+Every client sends requests to the same gateway endpoint. The `model` field
+selects one of three modes:
 
-Among the candidates (RouteLLM, Aurelio semantic-router), vLLM Semantic Router is
-the only one purpose-built as a serving-layer component: ModernBERT-based domain
-and keyword classification running in Rust/Candle, explicit decision rules with
-priorities, and first-class Kubernetes deployment via Envoy's ExtProc protocol.
-The trade-off accepted here: it pulls in the Envoy Gateway + Envoy AI Gateway
-stack, which is heavier than a single Python sidecar but is also the industry
-standard path for model-aware gateways (Gateway API Inference Extension uses the
-same ExtProc mechanism).
+| Mode | `model` value | Behavior |
+|---|---|---|
+| auto | `auto` | Router classifies the prompt and picks a tier |
+| small | `qwen3-4b-cpu` | Always the CPU tier |
+| big | `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` | Always the GPU tier |
 
-### Why Envoy AI Gateway and its CRDs
+Model names are case-sensitive. A pinned name is honored without classification
+(router logs `reason_code: model_specified`, latency 0 ms). Classification runs
+only for `auto`.
 
-The semantic router does not terminate HTTP itself in this topology. The
-responsibility split is:
+Client policy:
 
-| Concern | Owner |
-|---|---|
-| Public listener, routing, buffering, timeouts | Envoy Gateway (Gateway API data plane) |
-| OpenAI API translation, model-name extraction (`x-ai-eg-model`), backend abstraction (`AIServiceBackend`) | Envoy AI Gateway |
-| Request classification and tier selection | Semantic Router ExtProc |
+- **Cline** is pinned to the 14B model. Its traffic is agentic code work with
+  large technical prompts; the small tier is not suitable for tool calling and
+  multi-step editing.
+- **The chat UI** exposes all three modes. `auto` is the default for mixed
+  casual traffic.
 
-The AI Gateway CRDs (`AIGatewayRoute`, `AIServiceBackend`) exist so the data plane
-understands "route by the model field of an OpenAI request" instead of raw paths.
-The ExtProc sidecar is inserted as the **first** HTTP filter (via
-`EnvoyPatchPolicy`) so classification happens **before** route selection: the
-router rewrites the effective model, and the `AIGatewayRoute` then matches on it.
+## Decision rules
 
-### Why the escalation bias is in `providers.defaults`
+The classifier is ModernBERT-based topic classification plus keyword signals.
+It does not estimate task complexity directly.
 
-The decision config routes only three clear cases:
+| Decision | Priority | Conditions | Target |
+|---|---|---|---|
+| code_agentic | 30 | domain computer science OR engineering, or code keywords (refactor, debug, schema, migrations, sql, docker, kubernetes, function, script, api, pytest, deploy, …) | GPU |
+| technical_complex | 20 | domain math, physics, chemistry, biology | GPU |
+| chat_casual | 10 | domain other, psychology, history, philosophy, business, economics, health, law | CPU |
+| (default) | — | no decision matched | GPU |
 
-- `code_agentic` (computer science / engineering domains, agentic keywords) → GPU
-- `technical_complex` (hard STEM domains) → GPU
-- `chat_casual` (general knowledge, casual domains) → CPU
+The default rule implements escalation bias: unclassified or ambiguous traffic
+goes to the GPU tier. A false positive costs one GPU wake; a false negative
+serves a complex task from the small model, which is the unacceptable direction.
 
-Everything unmatched falls through to `providers.defaults.model`, which is the
-**GPU** model. A false positive (simple prompt wakes the GPU) costs cents and a
-few minutes of latency. A false negative (complex code silently answered by a 4B
-CPU model) produces bad code that looks plausible. The default therefore
-escalates; only clearly-casual traffic stays cheap.
+## Request flows
 
-### Why the GPU model alias is the literal vLLM model name
+CPU path (`auto` classified casual, or pinned small):
 
-vLLM's OpenAI server rejects requests whose `model` field does not match the
-served model. The router's GPU model entry is named exactly
-`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` so the forwarded body is accepted without
-any rewriting. The CPU tier (llama.cpp) ignores the model name, so its alias
-`qwen3-4b-cpu` is cosmetic.
+1. Client POSTs `/v1/chat/completions` to the gateway.
+2. ExtProc classifies the request and sets the effective model.
+3. `AIGatewayRoute` matches `x-ai-eg-model: qwen3-4b-cpu` → `slm-service:8080`.
+4. llama.cpp answers. Typical latency: seconds. No GPU wake.
 
-### Why all traffic goes through the router
+GPU path (`auto` classified code/complex, or pinned big):
 
-An earlier revision let Cline bypass the router and hit the KEDA interceptor
-directly (pinned model = routing decision already known, one less hop on the
-cold-start path). The final design routes **every** client through the gateway
-instead: a single entry point gives one place for auth, logging, and future
-policy, and the decision config guarantees the same outcome anyway — pinned GPU
-traffic keeps its model name, and code prompts classify as code → GPU under the
-escalation bias. The router only *classifies* when the model is unpinned
-(`model: "auto"`); a pinned model name flows through to the matching
-`AIGatewayRoute` rule.
+1. Same entry, effective model set to the 14B name.
+2. Route matches → backend `keda-add-ons-http-interceptor-proxy.keda:8080`.
+3. The interceptor holds the request, pending-request metric scales
+   `vllm-server` 0→1, the autoscaler provisions the GPU node if absent.
+4. When vLLM passes readiness, the interceptor forwards the held request.
+5. Observed cold start: ~3-4 min with a warm model PVC, ~7.5 min with a cold
+   PVC (first download). Scale-down after 300 s idle (`scaledownPeriod`).
 
-### Why the CPU tier also requires the API key
+Route timeouts: GPU rule 600 s, CPU rule 300 s. The GPU value must exceed the
+cold-start hold or the gateway kills waiting requests.
 
-Both backends are OpenAI-compatible servers reachable through the same gateway,
-so both must enforce the same Bearer token. vLLM uses its native `VLLM_API_KEY`;
-llama.cpp gets the same secret via the `LLAMA_API_KEY` env var (`--api-key`
-equivalent). One key, both tiers.
+## Integration details
 
-### Why the gateway has no public IP
+### Interceptor host matching
 
-Envoy Gateway defaults the data plane Service to `type: LoadBalancer`, which on
-GKE provisions a **public** L4 load balancer — wrong for this private stack (and
-~$18/mo). The `EnvoyProxy` resource sets `envoyService.type: ClusterIP`, so the
-gateway is only reachable inside the VPC or via `kubectl port-forward`.
+The KEDA interceptor matches requests against the `HTTPScaledObject` `hosts`
+list and returns 404 for unmatched hosts. Envoy rewrites the upstream
+`:authority` to the backend FQDN, so the list must contain:
 
-### Why the interceptor needed a new host
+- `keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local` (router-forwarded)
+- `localhost`, `localhost:8000`, `localhost:8080` (port-forwarded clients)
+- `vllm-service.vllm.svc.cluster.local` (in-cluster direct)
 
-The KEDA HTTP add-on interceptor matches incoming requests against the
-`HTTPScaledObject` `hosts` list. Requests forwarded by Envoy carry the original
-client `Host` header (e.g. `localhost:8080` when port-forwarded), which was not in
-the list — the interceptor would 404 them. `localhost:8080` was added to
-`k8s/vllm-chart/templates/httpscaledobject.yaml`.
+### ExtProc processing mode
 
-### Why the GPU route gets a 600s timeout
+The EnvoyPatchPolicy inserts the semantic-router filter as the first HTTP
+filter with:
 
-Envoy's default route timeouts (the demo uses 60s) would kill a request held by
-the interceptor during a GPU cold start. The GPU rule in `AIGatewayRoute` sets
-`request: 600s` / `backendRequest: 600s`; the CPU rule uses 300s because a 4B
-model on 2-3 vCPU generates slowly.
+- `request_body_mode: BUFFERED` (classification needs the full prompt)
+- `response_body_mode: NONE` and `allow_mode_override: false`
 
-### Why the CPU tier is always warm
+Response bodies must not reach the router. llama.cpp appends a non-standard
+`timings` field to responses and final stream chunks, which the router's strict
+decoder rejects (`invalid_upstream_json`, surfaced as 502 for non-streaming or
+a terminal SSE error event instead of `[DONE]` for streaming). With overrides
+allowed, the router opts back into response bodies per request; both settings
+are required. Side effect: response-side router features (semantic cache,
+stream reconstruction) are disabled. Request-side classification is unaffected.
 
-The system node runs 24/7 regardless, so scaling the CPU tier to zero would save
-nothing and add a cold start to the cheapest path. It is a plain Deployment with
-`replicas: 1`, no `HTTPScaledObject`.
+Note: `SKIP` is not a valid value for body modes (headers only). An invalid
+value silently drops the ext_proc filter from the listener; all requests then
+fall through to the gateway catch-all direct response.
 
-### Why the system pool grew to e2-standard-4
+### Authentication
 
-The e2-standard-2 (2 vCPU / 8 GB) could not hold KEDA + interceptor (~1.5 GB),
-the Envoy stack (~1 GB), the router's ModernBERT classifiers (~0.5 GB), and
-llama.cpp with Qwen3-4B Q4_K_M (~3-3.5 GB with KV cache). The e2-standard-4
-(4 vCPU / 16 GB) adds roughly $49/mo on-demand in europe-west4; the Phase 6 cost
-checkpoint compares this against the GPU wakes the tier avoids.
+Both backends enforce the same Bearer token from the `vllm-api-key` secret:
+vLLM via `VLLM_API_KEY`, llama.cpp via `LLAMA_API_KEY`. The gateway passes the
+client `Authorization` header through unchanged. Unauthenticated requests get
+401 from the backends.
 
-## Request lifecycle (chat UI, GPU asleep)
+### Network exposure
 
-1. Chat UI POSTs `/v1/chat/completions` with `model: "auto"` to the Envoy gateway
-   service (port-forwarded).
-2. Envoy buffers the body (`ClientTrafficPolicy` raises the buffer to 50Mi) and
-   streams it to the semantic router over gRPC ExtProc.
-3. The router classifies domain/keywords, applies the decision table, and rewrites
-   the effective model (`qwen3-4b-cpu` or `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`).
-4. The `AIGatewayRoute` matches `x-ai-eg-model` and selects the backend.
-5. CPU path: request lands on `slm-service`, response returns immediately.
-   GPU path: request lands on the KEDA interceptor, which holds it, scales the
-   deployment 0→1, the cluster autoscaler provisions the spot L4, and the request
-   is forwarded once vLLM passes readiness. The client sees one long request that
-   eventually streams.
+The Envoy data plane Service is `type: ClusterIP` (set on the `EnvoyProxy`
+resource). Envoy Gateway defaults to `LoadBalancer`, which on GKE provisions a
+public L4 load balancer; this is overridden. All access is via
+`kubectl port-forward`.
+
+### CPU tier scheduling
+
+The system node (e2-standard-4) reserves ~3 CPU for KEDA, the Envoy stack, and
+the router. The SLM Deployment requests 750m CPU / 4Gi and limits 3 CPU / 6Gi.
+Higher requests leave the pod unschedulable (`Insufficient cpu`), and the
+autoscaler then attempts GPU-pool scale-up for a CPU pod. Do not raise the SLM
+CPU request without resizing the system pool.
+
+## Validation record
+
+Executed on the live cluster (2026-09-18 / 2026-09-20):
+
+| Test | Expected | Observed |
+|---|---|---|
+| Casual prompts via `auto` | CPU answer, GPU stays at 0 | Pass (recipe, history, travel, finance) |
+| Code/agentic prompts via `auto` | GPU answer | Pass (async refactor, race-condition debug, schema design, framework migration) |
+| Pinned 14B via gateway | `model_specified`, GPU answer | Pass, 2m56s warm wake |
+| Pinned `qwen3-4b-cpu` via gateway | `model_specified`, CPU answer | Pass |
+| Cold start with cold PVC | held request, single response | Pass, 7m31s |
+| Scale-down | 0 replicas after 300 s idle | Pass |
+| Unauthenticated request | 401 | Pass (both tiers) |
+| Case-mismatched model name | 400 `specified_model_not_found` | Pass (names are case-sensitive) |
+| Misroute found and fixed | billing/schema prompt initially CPU via business domain; corrected by extending the `agentic` keyword signal | Fixed, retest passed |
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `k8s/install_semantic_routing.sh` | Installs Envoy Gateway, AI Gateway CRDs + controller, the router chart, and the Gateway API resources |
+| `k8s/install_semantic_routing.sh` | Installs Envoy Gateway, AI Gateway, router chart, Gateway API resources |
 | `k8s/semantic-router/values.yaml` | Router config: models, signals, decisions, escalation default |
-| `k8s/semantic-router/gwapi-resources.yaml` | GatewayClass, Gateway, backends, `AIGatewayRoute`, ExtProc patch |
-| `k8s/semantic-router/test-prompts.md` | Labeled synthetic prompts for routing validation |
-| `k8s/vllm-chart/templates/slm-*.yaml` | CPU tier Deployment + Service |
-| `k8s/vllm-chart/templates/httpscaledobject.yaml` | Interceptor host list incl. `localhost:8080` |
-
-## Verification results (validated on the live cluster)
-
-- The router emits the **model name** (not a LoRA-style alias) into
-  `x-ai-eg-model`; the route rules match on the full names. Confirmed in router
-  logs (`routing_decision` events) and Envoy access logs.
-- The client's `Authorization: Bearer` header passes through the gateway to
-  vLLM; no `BackendSecurityPolicy` is needed.
-- Envoy rewrites the upstream `:authority` to the FQDN backend hostname, so the
-  `HTTPScaledObject` `hosts` list includes
-  `keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local` (the interceptor
-  returns 404 for unmatched hosts). Port-forwarded traffic matches
-  `localhost:8080`.
-- ExtProc `response_body_mode` must be `NONE` **and** `allow_mode_override` must
-  be `false`: llama.cpp adds a non-standard `timings` field to responses (and to
-  the final streaming chunk), which the router's strict response decoder rejects.
-  With overrides allowed, the router opts back into response bodies per request
-  and streaming clients receive a terminal `invalid_upstream_json` SSE error
-  instead of `[DONE]` (this is what made Roo Code hang on "API Request...").
-  With both settings, response-side router features (semantic cache, stream
-  reconstruction) are off — acceptable, we use request-side classification only.
-  Note: `SKIP` is **not** a valid body mode (headers only) — an invalid value
-  silently drops the filter from the listener and every request falls through to
-  the gateway's direct-response 404/503.
-- The interceptor proxy service installed by the current `keda-add-ons-http`
-  chart is named `keda-add-ons-http-interceptor-proxy`, not the older
-  `vllm-http-interceptor-proxy` used in earlier revisions of this repo.
-- First wake with a cold PVC took 7m31s (pod start + ~10 GB model download +
-  vLLM load). Subsequent wakes reuse the PVC and match the documented 3-4 min.
-- Escalation bias was tuned once in production: "billing schema + migrations"
-  initially classified as business/casual and hit the CPU tier, so code-adjacent
-  keywords (schema, migrations, sql, docker, kubernetes, function, api, ...)
-  were added to the `agentic` signal. Retest: complex prompts → GPU, casual
-  prompts → CPU.
+| `k8s/semantic-router/gwapi-resources.yaml` | Gateway, backends, AIGatewayRoute, ExtProc patch |
+| `k8s/semantic-router/test-prompts.md` | Labeled synthetic prompts for decision tuning |
+| `k8s/vllm-chart/templates/slm-*.yaml` | CPU tier Deployment and Service |
+| `k8s/vllm-chart/templates/httpscaledobject.yaml` | GPU scale-to-zero and interceptor host list |
+| `chat-ui/` | Browser test UI with tier badges and same-origin proxy |
