@@ -1,5 +1,9 @@
 # vLLM Kubernetes Manifests
 
+Legacy raw manifests, kept for reference. The supported deployment path is the
+Helm chart in `k8s/vllm-chart/`, which additionally provides the CPU tier
+(`slm-server`) and the `HTTPScaledObject` for scale-to-zero.
+
 Deploys the vLLM OpenAI-compatible server configured for Qwen 2.5 Coder 14B AWQ on GKE. It utilizes Workload Identity and a PVC to cache model weights across instance reboots.
 
 ## Resource Inventory

@@ -16,23 +16,32 @@ graph TD
     subgraph "GCP Project"
         subgraph "GKE Cluster (Private)"
             CP[Control Plane / API Server]
-            
-            subgraph "Node Pool: gpu-pool (g2-standard-8)"
+
+            subgraph "Node Pool: system-pool (e2-standard-4)"
+                KEDA[KEDA + HTTP Interceptor]
+                GW[Envoy Gateway +<br/>Semantic Router]
+                SLM[slm-server<br/>Qwen3-4B CPU tier]
+            end
+
+            subgraph "Node Pool: gpu-pool (g2-standard-8, 0-1 nodes)"
                 L4[NVIDIA L4 GPU]
-                Pod[vLLM Pod]
+                Pod[vLLM Pod<br/>Qwen 14B GPU tier]
                 KSA[K8s Service Account: vllm-ksa]
-                
+
                 Pod --- L4
                 Pod --- KSA
             end
-            
+
+            GW -->|simple / casual| SLM
+            GW -->|complex / agentic| KEDA
+            KEDA -->|holds request, 0-1 scale| Pod
             CP --- Pod
         end
-        
+
         GSA[GCP Service Account: vllm-sa]
         KSA -. "Workload Identity" .-> GSA
     end
-    
+
     Local[Local VSCode]
-    Local -. "kubectl port-forward<br/>(Master Authorized Network)" .-> CP
+    Local -. "kubectl port-forward<br/>(Master Authorized Network)" .> CP
 ```

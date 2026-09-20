@@ -40,16 +40,19 @@ flowchart LR
 
 See [docs/semantic-routing-walkthrough.md](docs/semantic-routing-walkthrough.md) for the full design rationale and request lifecycle.
 
-### Scale-to-Zero Flow
+### Scale-to-Zero Flow (GPU path)
 ```mermaid
 sequenceDiagram
-    participant Developer
+    participant Client
+    participant Gateway as Envoy Gateway +<br/>Semantic Router
     participant KEDA_Proxy as KEDA HTTP Interceptor
     participant HPA as KEDA Scaler (HPA)
     participant GKE as GKE Autoscaler
     participant vLLM as vLLM Pod
 
-    Developer->>KEDA_Proxy: HTTP Request (Prompt)
+    Client->>Gateway: HTTP Request (model: auto or 14B)
+    Gateway->>Gateway: Classify / honor pinned model
+    Gateway->>KEDA_Proxy: Forward (GPU-bound request)
     KEDA_Proxy->>KEDA_Proxy: Hold Request in Queue
     KEDA_Proxy->>HPA: Metric: Pending Requests > 0
     HPA->>GKE: Scale Deployment to 1
@@ -57,8 +60,11 @@ sequenceDiagram
     GKE->>vLLM: Attach 50GB PVC & Start Pod (~1 min)
     vLLM-->>KEDA_Proxy: Health Check Passes
     KEDA_Proxy->>vLLM: Forward HTTP Request
-    vLLM-->>Developer: Stream LLM Response
+    vLLM-->>Gateway: Stream LLM Response
+    Gateway-->>Client: Stream LLM Response
 ```
+Requests routed to the CPU tier (`qwen3-4b-cpu`) bypass this flow entirely and are
+answered by the always-warm `slm-server` without touching the GPU pool.
 
 ## Cost Optimization (Zonal vs Regional)
 To make this viable for a personal developer environment, this project utilizes a **Zonal Cluster** instead of a Regional one.
@@ -153,6 +159,14 @@ python3 chat-ui/serve.py   # then open http://localhost:8000
 ```
 The UI has the same three modes in a dropdown and badges every answer with the
 tier that served it. See [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md).
+
+## Documentation
+
+- [docs/semantic-routing-walkthrough.md](docs/semantic-routing-walkthrough.md) — architecture reference: components, routing modes, decision rules, integration constraints, validation record
+- [docs/implementation-guide.md](docs/implementation-guide.md) — operator guide: client setup, verification, troubleshooting
+- [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md) — classifier limits, Plan/Act assessment, tuning loop
+- [docs/cost-checkpoint.md](docs/cost-checkpoint.md) — cost model and controls
+- [docs/semantic-routing-evolution.md](docs/semantic-routing-evolution.md) — original design context
 
 ## Security and Pre-commit Hooks
 
