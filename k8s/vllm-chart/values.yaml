@@ -42,7 +42,7 @@ slm:
   threads: "3"
   resources:
     requests:
-      cpu: "1500m"
+      cpu: "750m"
       memory: "4Gi"
     limits:
       cpu: "3"

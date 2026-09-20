@@ -148,6 +148,13 @@ curl -X POST http://localhost:8081/v1/chat/completions \
 ```
 Casual prompts are answered by the CPU tier without waking the GPU.
 
+*Browser chat UI (test the routing live):*
+```bash
+python3 chat-ui/serve.py   # then open http://localhost:8000
+```
+The UI has the same three modes in a dropdown and badges every answer with the
+tier that served it. See [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md).
+
 ## Security and Pre-commit Hooks
 
 This project enforces strict security checks to prevent secrets from being leaked to the public repository. We use `pre-commit` to manage these hooks.
