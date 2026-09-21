@@ -164,9 +164,8 @@ tier that served it. See [docs/experimenting-with-routing.md](docs/experimenting
 
 - [docs/semantic-routing-walkthrough.md](docs/semantic-routing-walkthrough.md) — architecture reference: components, routing modes, decision rules, integration constraints, validation record
 - [docs/implementation-guide.md](docs/implementation-guide.md) — operator guide: client setup, verification, troubleshooting
-- [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md) — classifier limits, Plan/Act assessment, tuning loop
+- [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md) — classifier limits, observability, tuning loop
 - [docs/cost-checkpoint.md](docs/cost-checkpoint.md) — cost model and controls
-- [docs/semantic-routing-evolution.md](docs/semantic-routing-evolution.md) — original design context
 
 ## Security and Pre-commit Hooks
 

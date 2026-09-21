@@ -39,9 +39,7 @@ Notes:
   400 `specified_model_not_found`.
 - The first request after an idle period waits 3-4 minutes while the GPU wakes.
   This is normal; the request is held, not failed.
-- Plan and Act modes should both use the 14B model. See
-  `experimenting-with-routing.md` for the assessment of splitting modes across
-  tiers.
+- Plan and Act modes should both use the 14B model.
 
 ## Client: chat UI (three modes)
 

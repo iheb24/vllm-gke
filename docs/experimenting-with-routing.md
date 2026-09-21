@@ -1,7 +1,7 @@
 # Routing Behavior and Limits
 
-Technical assessment of what the classifier does, where it fails, how the
-Plan/Act tier split evaluates, and how routing decisions are observed and tuned.
+Technical reference for what the classifier does, where it fails, and how
+routing decisions are observed and tuned.
 
 ## Classifier capabilities
 
@@ -27,31 +27,6 @@ escalation bias: ambiguous or unmatched prompts default to the GPU tier. False
 positives (simple prompt wakes the GPU) are accepted; false negatives (complex
 task served by the small model) are the failure mode the rules are tuned to
 prevent.
-
-## Plan/Act tier split assessment
-
-Proposal evaluated: Plan mode on `auto`, Act mode on `qwen3-4b-cpu`.
-
-Rejected for two structural reasons:
-
-1. **Act mode is precision-critical.** Act emits tool calls, file edits, and
-   shell commands. A 4B quantized model on shared CPU is least reliable exactly
-   there. Failures are silent: plausible-looking wrong edits or malformed tool
-   calls that break the agent loop.
-
-2. **Routing is per-message; agentic sessions are per-conversation.** The
-   router classifies each message in isolation. Short follow-ups inside a
-   planning session ("yes, option two") can classify as casual and switch the
-   model mid-session. The continuation model then lacks the capability the
-   earlier steps assumed.
-
-The split Cline documents (strong model for Plan, cheaper for Act) assumes the
-Act model is still a reliable coder. The CPU tier does not meet that bar; it is
-a chat-tier model. Current policy: Cline uses the 14B for both modes.
-
-If CPU offloading for agentic clients is ever needed, the viable scope is
-client-side subtasks (commit messages, summaries), where the client defines
-the safe boundaries, not mid-loop model swaps.
 
 ## Observing routing decisions
 
