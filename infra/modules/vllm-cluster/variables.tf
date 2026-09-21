@@ -27,3 +27,9 @@ variable "authorized_ip_ranges" {
   }))
   default = []
 }
+
+variable "system_machine_type" {
+  description = "Machine type for the always-on system node pool"
+  type        = string
+  default     = "e2-standard-4"
+}

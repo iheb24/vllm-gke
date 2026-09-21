@@ -30,3 +30,20 @@ scaling:
   scaledownPeriod: 300
   # targetPendingRequests determines when to scale up. 1 means any pending request scales it up.
   targetPendingRequests: 1
+
+slm:
+  enabled: true
+  image:
+    repository: "ghcr.io/ggml-org/llama.cpp"
+    tag: "server"
+  hfRepo: "Qwen/Qwen3-4B-GGUF"
+  hfFile: "Qwen3-4B-Q4_K_M.gguf"
+  ctxSize: "8192"
+  threads: "3"
+  resources:
+    requests:
+      cpu: "750m"
+      memory: "4Gi"
+    limits:
+      cpu: "3"
+      memory: "6Gi"

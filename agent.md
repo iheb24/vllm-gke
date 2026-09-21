@@ -3,13 +3,14 @@
 Welcome to the vLLM on GKE project. When working on this repository as an AI agent, you must strictly follow these guidelines. The human developer is treating this project as a learning experience, so **do not generate entire blocks of infrastructure code unless explicitly instructed**. Prefer explaining concepts, asking questions, and taking a step-by-step approach.
 
 ## 1. Project Context
-- **Objective:** Host a vLLM instance on Google Kubernetes Engine (GKE) to serve the **Qwen 2.5 Coder 14B AWQ** model.
+- **Objective:** Host a vLLM instance on Google Kubernetes Engine (GKE) to serve the **Qwen 2.5 Coder 14B AWQ** model, fronted by a semantic routing layer that tiers traffic.
 - **Model Specs:** Loading in AWQ 4-bit quantization to fit within a single 24GB L4 GPU, reserving enough VRAM for a massive 32K context window.
 - **Hardware Specs:** 
   - GPU Pool: Target GKE node pool is `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM).
-  - System Pool: Must use `e2-standard-2` to guarantee sufficient CPU for KEDA operator and HTTP interceptor pods.
+  - System Pool: Must use `e2-standard-4` to fit KEDA, the HTTP interceptor, the Envoy Gateway / AI Gateway stack, the vLLM Semantic Router ExtProc, and the CPU SLM tier.
+- **Tiered Routing:** vLLM Semantic Router (ModernBERT classifier, ExtProc behind Envoy AI Gateway) is the single entry point for all clients. Three routing modes via the `model` field: `auto` (classified), `qwen3-4b-cpu` (forced CPU tier), `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` (forced GPU tier). Client policy: Cline is pinned to the 14B for both Plan and Act; the chat UI (`chat-ui/`) exposes all three modes. Routing is biased toward escalation: unmatched or ambiguous requests default to the GPU tier. Both tiers enforce the same Bearer API key (`vllm-api-key` secret). The gateway data plane is ClusterIP-only (no public LB); clients use `kubectl port-forward`. See `docs/semantic-routing-walkthrough.md`.
 - **Node Pool & Quotas:** The cluster is deployed as a **Zonal Cluster** (e.g., `europe-west4-b`) to optimize costs and avoid the Regional $73/mo control plane fee.
-- **Scale-to-Zero Architecture:** Uses `kedacore/keda` and `kedacore/keda-add-ons-http`. The vLLM Helm chart includes an `HTTPScaledObject` to intercept and hold requests while the GPU node provisions.
+- **Scale-to-Zero Architecture:** Uses `kedacore/keda` and `kedacore/keda-add-ons-http`. The vLLM Helm chart includes an `HTTPScaledObject` to intercept and hold requests while the GPU node provisions. The CPU tier does NOT scale to zero.
 
 ## 2. Security & Secrets Management
 - **Public Repository Rules:** This is a public repository. **NEVER** hardcode sensitive data, API keys, database passwords, or static Service Account credentials in any file.

@@ -9,8 +9,10 @@ spec:
   # This can be the internal service name or external ingress hostname.
   hosts: 
     - vllm-service.{{ .Values.namespace }}.svc.cluster.local
+    - keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
     - localhost
     - localhost:8000
+    - localhost:8080
   scaleTargetRef:
     # Points to the deployment we want to scale
     name: vllm-server
