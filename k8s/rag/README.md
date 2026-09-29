@@ -10,7 +10,7 @@ ClusterIP only, nothing touches the GPU pool.
 | Directory | Component | Purpose |
 | --- | --- | --- |
 | `qdrant/` | Qdrant vector database (Helm) | Stores chunk vectors for the versioned `docs-v1` collection (1024-dim, cosine) |
-| `embeddings/` | TEI vs llama.cpp embedding servers | Candidates for the CPU embedding tier; the benchmark in `bench/` picks the winner and the loser is deleted |
+| `embeddings/` | TEI embedding server (ONNX Runtime) | CPU embedding tier; won the benchmark against llama.cpp (`bench/results.md`) |
 | `ingest/` | Ingestion CronJob | GCS bucket -> parse (Docling) -> split -> embed -> upsert; idempotent |
 | `retrieval/` | Retrieval API (FastAPI) | `/search` over Qdrant, `/chat` end-to-end through the Envoy gateway with citations |
 
@@ -52,20 +52,15 @@ curl -X PUT -H "api-key: $QDRANT_KEY" -H 'Content-Type: application/json' \
   -d '{"vectors": {"size": 1024, "distance": "Cosine"}}'
 ```
 
-## Embedding servers
+## Embedding server
 
-Both candidates need the shared API key secret:
+TEI serving the ONNX export of Qwen3-Embedding-0.6B (benchmark and tuning
+history in `bench/results.md`):
 
 ```bash
 kubectl -n rag create secret generic embed-apikey --from-literal=api-key='YOUR_EMBED_KEY'
 kubectl apply -f k8s/rag/embeddings/tei-deployment.yaml
-kubectl apply -f k8s/rag/embeddings/llamacpp-deployment.yaml
 ```
-
-Benchmark both (see `bench/embed_bench.py` and `bench/similarity_sanity.py`),
-record the results in `bench/results.md`, keep the winner and delete the loser
-deployment. Update `EMBED_URL` in `ingest/cronjob.yaml` and
-`retrieval/deployment.yaml` to point at the winner.
 
 ## Ingestion job
 
