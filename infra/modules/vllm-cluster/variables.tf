@@ -7,6 +7,12 @@ variable "region" {
   default = "us-central1"
 }
 
+variable "zone" {
+  description = "Zone for the zonal cluster and its node pools"
+  type        = string
+  default     = "us-central1-a"
+}
+
 variable "cluster_name" {
   type    = string
   default = "vllm-cluster"

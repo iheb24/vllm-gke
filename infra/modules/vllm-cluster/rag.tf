@@ -1,6 +1,6 @@
 resource "google_container_node_pool" "rag_pool" {
   name     = "rag-pool"
-  location = "${var.region}-b"
+  location = var.zone
   cluster  = google_container_cluster.primary.name
   project  = var.project_id
 

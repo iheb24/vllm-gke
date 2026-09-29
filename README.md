@@ -7,7 +7,7 @@ This repository contains the infrastructure as code (Terraform) and Kubernetes m
 
 ## Architecture Highlights
 - **Model:** Qwen 2.5 Coder 14B AWQ (GPU tier) + Qwen3-4B Q4_K_M on llama.cpp (CPU tier).
-- **Hardware:** GCP `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `us-central1-b`.
+- **Hardware:** GCP `g2-standard-8` (1x NVIDIA L4 GPU, 8 vCPUs, 32GB RAM) in `us-central1-a`.
 - **System Pool:** GCP `e2-standard-4` (KEDA, HTTP interceptor, semantic router stack, CPU SLM tier).
 - **Routing:** vLLM Semantic Router (ModernBERT classifier) behind Envoy Gateway / AI Gateway sends casual traffic to the CPU tier and complex/agentic traffic to the GPU tier, biased toward escalation.
 - **Security:** Strict security utilizing Workload Identity and private network.
@@ -69,7 +69,7 @@ answered by the always-warm `slm-server` without touching the GPU pool.
 ## Cost Optimization (Zonal vs Regional)
 To make this viable for a personal developer environment, this project utilizes a **Zonal Cluster** instead of a Regional one.
 - **Regional Cluster:** Highly available across 3 zones. Costs ~$73/mo just for the management fee.
-- **Zonal Cluster:** Lives in a single zone (e.g., `us-central1-b`). Management fee is **$0/mo** (Free Tier).
+- **Zonal Cluster:** Lives in a single zone (e.g., `us-central1-a`). Management fee is **$0/mo** (Free Tier).
 Total idle cost drops from ~$800/mo (always-on enterprise) to **~$100/mo** (Zonal + KEDA + always-on system pool sized for the CPU tier and router).
 
 ## Quick Start Deployment Guide
@@ -97,7 +97,7 @@ terraform apply
 
 **4. Connect to your new cluster:**
 ```bash
-gcloud container clusters get-credentials vllm-cluster --zone us-central1-b --project YOUR_GCP_PROJECT_ID
+gcloud container clusters get-credentials vllm-cluster --zone us-central1-a --project YOUR_GCP_PROJECT_ID
 ```
 
 **5. Install KEDA & vLLM:**
