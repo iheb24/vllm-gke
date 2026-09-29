@@ -10,3 +10,11 @@ output "cluster_endpoint" {
 output "vllm_service_account_email" {
   value = google_service_account.vllm_sa.email
 }
+
+output "rag_docs_bucket_name" {
+  value = google_storage_bucket.rag_docs.name
+}
+
+output "rag_ingest_service_account_email" {
+  value = google_service_account.rag_ingest_sa.email
+}

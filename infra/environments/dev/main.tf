@@ -10,12 +10,13 @@ module "network" {
 }
 
 module "vllm-cluster" {
-  source              = "../../modules/vllm-cluster"
-  project_id          = var.project_id
-  network_name        = module.network.network_name
-  subnet_name         = module.network.subnet_name
-  region              = "europe-west4"
-  system_machine_type = var.system_machine_type
+  source               = "../../modules/vllm-cluster"
+  project_id           = var.project_id
+  network_name         = module.network.network_name
+  subnet_name          = module.network.subnet_name
+  region               = "europe-west4"
+  system_machine_type  = var.system_machine_type
+  rag_docs_bucket_name = var.rag_docs_bucket_name
 
   authorized_ip_ranges = [
     {
