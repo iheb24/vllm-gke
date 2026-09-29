@@ -1,0 +1,32 @@
+replicaCount: 1
+
+image:
+  tag: "v1.15.5"
+
+service:
+  type: ClusterIP
+
+apiKey:
+  valueFrom:
+    secretKeyRef:
+      name: qdrant-key
+      key: api-key
+
+config:
+  cluster:
+    enabled: false
+
+persistence:
+  size: 10Gi
+  storageClassName: "standard-rwo"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2"
+    memory: "2Gi"
+
+nodeSelector:
+  workload: rag
