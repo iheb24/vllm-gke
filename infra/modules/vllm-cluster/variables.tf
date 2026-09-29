@@ -43,7 +43,7 @@ variable "system_machine_type" {
 variable "rag_machine_type" {
   description = "Machine type for the RAG node pool (Qdrant, embedding server, retrieval API)"
   type        = string
-  default     = "e2-standard-2"
+  default     = "e2-standard-4"
 }
 
 variable "rag_docs_bucket_name" {
