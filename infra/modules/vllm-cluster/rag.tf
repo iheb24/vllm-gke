@@ -60,6 +60,12 @@ resource "google_storage_bucket_iam_member" "rag_ingest_object_viewer" {
   member = "serviceAccount:${google_service_account.rag_ingest_sa.email}"
 }
 
+resource "google_project_iam_member" "rag_node_ar_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.vllm_sa.email}"
+}
+
 resource "google_service_account_iam_binding" "rag_ingest_workload_identity_binding" {
   service_account_id = google_service_account.rag_ingest_sa.name
   role               = "roles/iam.workloadIdentityUser"
