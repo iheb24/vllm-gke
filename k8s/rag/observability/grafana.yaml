@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: rag
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        isDefault: true
+        url: http://prometheus.rag.svc.cluster.local:9090
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: rag
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-rag
+  namespace: rag
+data:
+  rag.json: |
+    {"title": "RAG pipeline", "schemaVersion": 39, "timezone": "browser",
+     "templating": {"list": []},
+     "time": {"from": "now-1h", "to": "now"},
+     "panels": [
+      {"id": 1, "title": "Stage latency p50/p95 (embed, qdrant, rerank, gateway)", "type": "timeseries",
+       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+       "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_bucket[5m])))"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_bucket[5m])))"}
+       ]},
+      {"id": 2, "title": "Requests by endpoint/outcome", "type": "timeseries",
+       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+       "targets": [
+        {"refId": "A", "expr": "sum by (http_route, outcome) (rate(rag_retrieval_requests_total[5m]))"}
+       ]},
+      {"id": 3, "title": "Token usage per chat (input/output)", "type": "timeseries",
+       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+       "targets": [
+        {"refId": "A", "expr": "sum by (gen_ai_token_type) (rate(gen_ai_client_token_usage_sum[5m])) / sum by (gen_ai_token_type) (rate(gen_ai_client_token_usage_count[5m]))"}
+       ]},
+      {"id": 4, "title": "Top RRF score per search (out-of-scope detection)", "type": "timeseries",
+       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+       "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(rag_retrieval_top_score_bucket[5m])))"}
+       ]}
+     ]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: rag
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      nodeSelector:
+        workload: rag
+      containers:
+        - name: grafana
+          image: "grafana/grafana:11.6.0"
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Admin"
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 3000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
+            - name: provisioning
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: dashboard-rag
+              mountPath: /var/lib/grafana/dashboards/rag.json
+              subPath: rag.json
+      volumes:
+        - name: provisioning
+          configMap:
+            name: grafana-provisioning
+        - name: dashboard-rag
+          configMap:
+            name: grafana-dashboard-rag
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: rag
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

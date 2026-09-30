@@ -44,8 +44,11 @@ spec:
                   key: api-key
             - name: GATEWAY_MODEL
               value: "qwen3-4b-cpu"
+            - name: RERANK_URL
+              value: "http://rerank-tei.rag.svc.cluster.local:8080"
           ports:
-            - containerPort: 8090
+            - name: http
+              containerPort: 8090
           resources:
             requests:
               cpu: "100m"

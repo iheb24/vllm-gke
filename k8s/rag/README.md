@@ -12,7 +12,8 @@ ClusterIP only, nothing touches the GPU pool.
 | `qdrant/` | Qdrant vector database (Helm) | Stores chunk vectors for the versioned `docs-v2` collection (dense 1024-dim cosine + sparse BM25) |
 | `embeddings/` | TEI embedding server (ONNX Runtime) | CPU embedding tier; won the benchmark against llama.cpp (`bench/results.md`) |
 | `ingest/` | Ingestion CronJob | GCS bucket -> parse (Docling) -> split -> embed -> upsert; idempotent |
-| `retrieval/` | Retrieval API (FastAPI) | `/search` over Qdrant, `/chat` end-to-end through the Envoy gateway with citations |
+| `retrieval/` | Retrieval API (FastAPI) | `/search` over Qdrant, `/chat` end-to-end through the Envoy gateway with citations; OTel GenAI metrics at `/metrics` |
+| `observability/` | Prometheus + Grafana | Self-hosted metrics stack for the pipeline (stage latencies, token usage, retrieval scores) |
 
 ## Qdrant deployment
 
@@ -103,3 +104,22 @@ kubectl -n rag port-forward svc/retrieval 8090:8090 &
 curl localhost:8090/search -H 'Content-Type: application/json' \
   -d '{"query":"how does KEDA wake the GPU pool?"}'
 ```
+
+## Observability
+
+The retrieval API emits OpenTelemetry metrics (GenAI semantic conventions:
+`gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, plus
+`rag.retrieval.*` stage histograms) at `/metrics`. A self-hosted Prometheus
+scrapes it (plus TEI and Qdrant), and a provisioned Grafana dashboard
+visualizes it:
+
+```bash
+kubectl apply -f k8s/rag/observability/prometheus.yaml -f k8s/rag/observability/grafana.yaml
+kubectl -n rag port-forward svc/grafana 3000:3000   # http://localhost:3000 -> "RAG pipeline"
+```
+
+Note: Google Managed Prometheus was evaluated first and abandoned for now —
+scraping worked but no metrics (including native GKE system metrics) reached
+Cloud Monitoring even after granting the node SA `monitoring.metricWriter`.
+The self-hosted stack is deterministic and has no IAM surface. Revisit GMP as
+a platform issue separately.

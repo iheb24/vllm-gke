@@ -3,3 +3,6 @@ uvicorn
 qdrant-client
 requests
 fastembed
+opentelemetry-sdk
+opentelemetry-exporter-prometheus
+prometheus-client

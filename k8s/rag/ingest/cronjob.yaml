@@ -52,7 +52,7 @@ spec:
                       key: api-key
               resources:
                 requests:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "2Gi"
                 limits:
                   cpu: "2"
