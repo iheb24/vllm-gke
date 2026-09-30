@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rerank-tei
+  namespace: rag
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rerank-tei
+  template:
+    metadata:
+      labels:
+        app: rerank-tei
+    spec:
+      nodeSelector:
+        workload: rag
+      containers:
+        - name: tei
+          image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4"
+          args:
+            - "--model-id"
+            - "Xenova/bge-reranker-base"
+            - "--port"
+            - "8080"
+            - "--max-batch-tokens"
+            - "1024"
+            - "--max-client-batch-size"
+            - "128"
+            - "--api-key"
+            - "$(EMBED_API_KEY)"
+          env:
+            - name: EMBED_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: embed-apikey
+                  key: api-key
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "3"
+              memory: "6Gi"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rerank-tei
+  namespace: rag
+spec:
+  type: ClusterIP
+  selector:
+    app: rerank-tei
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

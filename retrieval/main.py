@@ -24,6 +24,8 @@ GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:8081")
 GATEWAY_API_KEY = os.environ.get("GATEWAY_API_KEY")
 GATEWAY_MODEL = os.environ.get("GATEWAY_MODEL", "auto")
 TOP_K = int(os.environ.get("TOP_K", "5"))
+RERANK_URL = os.environ.get("RERANK_URL", "")
+RERANK_CANDIDATES = int(os.environ.get("RERANK_CANDIDATES", "50"))
 
 SYSTEM_PROMPT = """You answer questions using only the passages below.
 Rules:
@@ -66,15 +68,18 @@ def search_passages(query, k):
     dense = embed([query])[0]
     sparse_emb = list(sparse_model.embed([query]))[0]
     sparse = SparseVector(indices=sparse_emb.indices.tolist(), values=sparse_emb.values.tolist())
+    candidate_count = RERANK_CANDIDATES if RERANK_URL else k
     hits = qdrant.query_points(
         collection_name=COLLECTION,
         prefetch=[
-            Prefetch(query=dense, using="dense", limit=20),
-            Prefetch(query=sparse, using="bm25", limit=20),
+            Prefetch(query=dense, using="dense", limit=max(candidate_count, 20)),
+            Prefetch(query=sparse, using="bm25", limit=max(candidate_count, 20)),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
-        limit=k,
+        limit=candidate_count,
     ).points
+    if RERANK_URL and len(hits) > k:
+        hits = rerank(query, hits, k)
     return [
         {
             "source": hit.payload["source"],
@@ -85,6 +90,21 @@ def search_passages(query, k):
         }
         for hit in hits
     ]
+
+
+def rerank(query, hits, k):
+    headers = {"Content-Type": "application/json"}
+    if EMBED_API_KEY:
+        headers["Authorization"] = f"Bearer {EMBED_API_KEY}"
+    resp = requests.post(
+        f"{RERANK_URL}/rerank",
+        json={"query": query, "texts": [h.payload["text"] for h in hits]},
+        headers=headers,
+        timeout=120,
+    )
+    resp.raise_for_status()
+    order = sorted(resp.json(), key=lambda r: r["score"], reverse=True)
+    return [hits[r["index"]] for r in order[:k]]
 
 
 @app.post("/search")
