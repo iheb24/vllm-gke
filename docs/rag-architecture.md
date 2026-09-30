@@ -147,14 +147,27 @@ kept only if these numbers go up.
 | 5 | Retrieval API and/or Qdrant MCP server, evaluation set |
 | Later | Hybrid search, reranking, contextual retrieval |
 
-## Decisions to take together
+## Decisions taken (2026-09-30)
 
-1. **Capacity.** Resize the system pool (e2-standard-8, ~+$98/mo) or add a
-   small CPU pool (e2-standard-2, ~+$50/mo). Estimates from `cost-checkpoint.md`.
-2. **Which tier answers RAG questions.** CPU: no GPU wake, ~30 s to first
-   token. GPU: fast once warm, one wake per idle period.
-3. **Integration.** Retrieval API, MCP server, or both.
-4. **First corpus.** Which documents, and the bucket layout.
+1. **Capacity.** A dedicated `rag-pool` (e2-standard-4) hosts the RAG
+   components. The plan-sized e2-standard-2 could not run either embedding
+   server: TEI OOMed at every memory limit tried (2-6Gi, candle and ORT) and
+   llama.cpp needed ~4Gi while answering in ~3.3 s per request. Evidence:
+   `bench/results.md`.
+2. **Which tier answers RAG questions.** The retrieval API pins the gateway
+   `model` to `qwen3-4b-cpu`: no GPU wake, predictable latency. The GPU tier
+   remains available by changing `GATEWAY_MODEL`.
+3. **Integration.** Retrieval API first (`/search`, `/chat`); the Qdrant MCP
+   server for agents is deferred.
+4. **First corpus.** This repository's own docs under `seed/` in the
+   Terraform-managed bucket, preserving repo-relative paths.
+
+Deployment reality vs. this document: the embedding server is TEI's CPU image
+running the ONNX Runtime backend against
+`onnx-community/Qwen3-Embedding-0.6B-ONNX` with `--pooling last-token` and a
+small `--max-batch-tokens` (the candle backend could not start within the
+node's memory). Retrieval quality gate passed on the golden set:
+hit@5 0.95, MRR 0.76 (`eval/reports/`).
 
 ## What the local prototype taught us
 

@@ -12,6 +12,7 @@ This repository contains the infrastructure as code (Terraform) and Kubernetes m
 - **Routing:** vLLM Semantic Router (ModernBERT classifier) behind Envoy Gateway / AI Gateway sends casual traffic to the CPU tier and complex/agentic traffic to the GPU tier, biased toward escalation.
 - **Security:** Strict security utilizing Workload Identity and private network.
 - **Scale-to-Zero:** KEDA HTTP Add-on intercepts requests and scales the GPU node pool from 0 to 1, providing ~91% cost savings for idle periods.
+- **RAG:** Retrieval-augmented generation over documents in a GCS bucket — Qdrant, a CPU embedding server, an ingestion CronJob and a retrieval API, all on a dedicated `rag-pool` (e2-standard-4). Design: `docs/rag-architecture.md`, deploy: `k8s/rag/README.md`.
 
 ### Tiered Routing Topology
 ```mermaid
