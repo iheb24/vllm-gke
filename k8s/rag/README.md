@@ -85,7 +85,16 @@ kubectl -n rag logs -f job/ingest-manual-1
 ## Retrieval API
 
 Build and push like the ingestion image, fill in the image placeholder in
-`retrieval/deployment.yaml`, then:
+`retrieval/deployment.yaml`. Two environment-specific values to check:
+
+1. `GATEWAY_URL` must point at the gateway data-plane service, whose name
+   carries an install-specific suffix. Find it with:
+   `kubectl get svc -n envoy-gateway-system --selector=gateway.envoyproxy.io/owning-gateway-name=semantic-router`
+2. The gateway Bearer key must also exist in the `rag` namespace:
+   `kubectl -n rag create secret generic vllm-api-key --from-literal=api-key="$KEY"`
+   (same value as the secret in the `vllm` namespace)
+
+Then:
 
 ```bash
 kubectl apply -f k8s/rag/retrieval/deployment.yaml

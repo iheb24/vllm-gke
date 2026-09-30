@@ -36,14 +36,14 @@ spec:
                   name: embed-apikey
                   key: api-key
             - name: GATEWAY_URL
-              value: "http://envoy-gateway.envoy-gateway-system.svc.cluster.local:8080"
+              value: "http://envoy-vllm-semantic-router-34deec5c.envoy-gateway-system.svc.cluster.local:80"
             - name: GATEWAY_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: vllm-api-key
                   key: api-key
             - name: GATEWAY_MODEL
-              value: "auto"
+              value: "qwen3-4b-cpu"
           ports:
             - containerPort: 8090
           resources:
