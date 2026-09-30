@@ -9,7 +9,7 @@ ClusterIP only, nothing touches the GPU pool.
 
 | Directory | Component | Purpose |
 | --- | --- | --- |
-| `qdrant/` | Qdrant vector database (Helm) | Stores chunk vectors for the versioned `docs-v1` collection (1024-dim, cosine) |
+| `qdrant/` | Qdrant vector database (Helm) | Stores chunk vectors for the versioned `docs-v2` collection (dense 1024-dim cosine + sparse BM25) |
 | `embeddings/` | TEI embedding server (ONNX Runtime) | CPU embedding tier; won the benchmark against llama.cpp (`bench/results.md`) |
 | `ingest/` | Ingestion CronJob | GCS bucket -> parse (Docling) -> split -> embed -> upsert; idempotent |
 | `retrieval/` | Retrieval API (FastAPI) | `/search` over Qdrant, `/chat` end-to-end through the Envoy gateway with citations |
@@ -44,12 +44,13 @@ curl localhost:6333/readyz                                  # expect ok
 ```
 
 Create the versioned collection (embedding model is locked to it — changing
-the model means a new collection and a full re-embed):
+the model means a new collection and a full re-embed). `docs-v2` adds a sparse
+BM25 vector for hybrid search (dense + sparse, RRF fusion server-side):
 
 ```bash
 curl -X PUT -H "api-key: $QDRANT_KEY" -H 'Content-Type: application/json' \
-  localhost:6333/collections/docs-v1 \
-  -d '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+  localhost:6333/collections/docs-v2 \
+  -d '{"vectors": {"dense": {"size": 1024, "distance": "Cosine"}}, "sparse_vectors": {"bm25": {"modifier": "idf"}}}'
 ```
 
 ## Embedding server

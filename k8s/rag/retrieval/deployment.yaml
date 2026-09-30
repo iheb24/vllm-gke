@@ -27,7 +27,7 @@ spec:
                   name: qdrant-key
                   key: api-key
             - name: QDRANT_COLLECTION
-              value: "docs-v1"
+              value: "docs-v2"
             - name: EMBED_URL
               value: "http://embed-tei.rag.svc.cluster.local:8080"
             - name: EMBED_API_KEY

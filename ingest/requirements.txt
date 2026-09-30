@@ -3,3 +3,4 @@ qdrant-client
 langchain-text-splitters
 docling
 requests
+fastembed

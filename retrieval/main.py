@@ -10,8 +10,10 @@ import os
 
 import requests
 from fastapi import FastAPI
+from fastembed import SparseTextEmbedding
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
+from qdrant_client.models import Fusion, FusionQuery, Prefetch, SparseVector
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
@@ -33,6 +35,7 @@ Rules:
 
 app = FastAPI()
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+sparse_model = SparseTextEmbedding("Qdrant/bm25")
 
 
 class SearchRequest(BaseModel):
@@ -60,8 +63,18 @@ def embed(texts):
 
 
 def search_passages(query, k):
-    vector = embed([query])[0]
-    hits = qdrant.query_points(collection_name=COLLECTION, query=vector, limit=k).points
+    dense = embed([query])[0]
+    sparse_emb = list(sparse_model.embed([query]))[0]
+    sparse = SparseVector(indices=sparse_emb.indices.tolist(), values=sparse_emb.values.tolist())
+    hits = qdrant.query_points(
+        collection_name=COLLECTION,
+        prefetch=[
+            Prefetch(query=dense, using="dense", limit=20),
+            Prefetch(query=sparse, using="bm25", limit=20),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
+        limit=k,
+    ).points
     return [
         {
             "source": hit.payload["source"],

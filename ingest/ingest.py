@@ -96,6 +96,13 @@ def embed_batch(texts):
     return [item["embedding"] for item in resp.json()["data"]]
 
 
+def sparse_batch(texts, sparse_model):
+    return [
+        {"indices": emb.indices.tolist(), "values": emb.values.tolist()}
+        for emb in sparse_model.embed(texts)
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -112,11 +119,14 @@ def main():
     log.info("found %d documents under gs://%s/%s", len(blobs), CONFIG["bucket"], CONFIG["prefix"])
 
     qdrant = None
+    sparse_model = None
     if not args.dry_run:
+        from fastembed import SparseTextEmbedding
         from qdrant_client import QdrantClient
-        from qdrant_client.models import PointStruct
+        from qdrant_client.models import PointStruct, SparseVector
 
         qdrant = QdrantClient(url=CONFIG["qdrant_url"], api_key=CONFIG["qdrant_api_key"])
+        sparse_model = SparseTextEmbedding("Qdrant/bm25")
 
     converter_cache = {}
     total_chunks = 0
@@ -145,10 +155,14 @@ def main():
         for start in range(0, len(prefixed), CONFIG["batch_size"]):
             batch = prefixed[start : start + CONFIG["batch_size"]]
             vectors = embed_batch(batch)
+            sparse_vectors = sparse_batch(batch, sparse_model)
             points = [
                 PointStruct(
                     id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{gcs_uri}#{start + i}")),
-                    vector=vector,
+                    vector={
+                        "dense": vectors[i],
+                        "bm25": SparseVector(**sparse_vectors[i]),
+                    },
                     payload={
                         "source": gcs_uri,
                         "heading_path": chunks[start + i][0],
@@ -157,7 +171,7 @@ def main():
                         "ingested_at": ingested_at,
                     },
                 )
-                for i, vector in enumerate(vectors)
+                for i in range(len(vectors))
             ]
             qdrant.upsert(collection_name=CONFIG["collection"], points=points)
             total_upserts += len(points)
