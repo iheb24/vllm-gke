@@ -22,7 +22,7 @@ it):
 
 ```bash
 kubectl create namespace rag
-kubectl -n rag create secret generic qdrant-apikey --from-literal=api-key='YOUR_QDRANT_KEY'
+kubectl -n rag create secret generic qdrant-key --from-literal=api-key='YOUR_QDRANT_KEY'
 ```
 
 Install via the official Helm chart:
@@ -39,7 +39,7 @@ kubectl -n rag get pods,pvc
 kubectl -n rag rollout status statefulset/qdrant
 
 kubectl -n rag port-forward svc/qdrant 6333:6333 &
-export QDRANT_KEY=$(kubectl -n rag get secret qdrant-apikey -o jsonpath='{.data.api-key}' | base64 -d)
+export QDRANT_KEY=$(kubectl -n rag get secret qdrant-key -o jsonpath='{.data.api-key}' | base64 -d)
 curl -H "api-key: $QDRANT_KEY" localhost:6333/collections   # expect empty list
 curl localhost:6333/readyz                                  # expect ok
 ```
