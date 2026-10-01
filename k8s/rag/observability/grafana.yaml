@@ -34,8 +34,8 @@ data:
       {"id": 1, "title": "Stage latency p50/p95 (embed, qdrant, rerank, gateway)", "type": "timeseries",
        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
        "targets": [
-        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_bucket[5m])))"},
-        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_bucket[5m])))"}
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_seconds_bucket[5m])))"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (rag_stage, le) (rate(rag_retrieval_stage_duration_seconds_bucket[5m])))"}
        ]},
       {"id": 2, "title": "Requests by endpoint/outcome", "type": "timeseries",
        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
