@@ -64,18 +64,43 @@ kubectl -n rag create secret generic embed-apikey --from-literal=api-key='YOUR_E
 kubectl apply -f k8s/rag/embeddings/tei-deployment.yaml
 ```
 
+## Seed corpus
+
+The ingestion job reads documents from the bucket under `GCS_PREFIX`. To seed
+it with this repository's docs (preserving repo-relative paths, which the
+golden eval set's `expected_source` values match):
+
+```bash
+for f in README.md agent.md docs/*.md k8s/vllm/README.md k8s/vllm-chart/README.md \
+         infra/modules/network/README.md infra/modules/vllm-cluster/README.md; do
+  gcloud storage cp "$f" "gs://$BUCKET/seed/$f"
+done
+```
+
 ## Ingestion job
 
 Build and push the image (needs an Artifact Registry repo named `rag`), then
-fill in the placeholders in `ingest/cronjob.yaml` (GCP service account email,
-image path, bucket name):
+apply the CronJob with the project-specific values substituted. Export your
+project ID once and copy-paste the rest:
 
 ```bash
+export PROJECT_ID=YOUR_PROJECT_ID
+export BUCKET=vllm-gke-rag-docs-${PROJECT_ID}
+
 gcloud artifacts repositories create rag --repository-format=docker \
-  --location=us-central1 --project=YOUR_PROJECT_ID
-gcloud builds submit ingest --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/rag/ingest:latest
-kubectl apply -f k8s/rag/ingest/cronjob.yaml
+  --location=us-central1 --project=$PROJECT_ID
+gcloud builds submit ingest --tag us-central1-docker.pkg.dev/$PROJECT_ID/rag/ingest:latest
+
+# substitute placeholders and apply (GSA email, image path, bucket, GCS prefix)
+sed -e "s/YOUR_PROJECT_ID/$PROJECT_ID/g" \
+    -e "s/YOUR_RAG_DOCS_BUCKET/$BUCKET/" \
+    -e 's/value: ""/value: "seed\/"/' \
+    k8s/rag/ingest/cronjob.yaml | kubectl apply -f -
 ```
+
+Applying the file without the substitution fails with `InvalidImageName`
+(the `YOUR_PROJECT_ID` placeholder contains underscores, which are not valid
+in an image path).
 
 Manual runs go through the CronJob (idempotent, safe to re-run):
 
@@ -86,8 +111,8 @@ kubectl -n rag logs -f job/ingest-manual-1
 
 ## Retrieval API
 
-Build and push like the ingestion image, fill in the image placeholder in
-`retrieval/deployment.yaml`. Two environment-specific values to check:
+Build and push like the ingestion image, apply with the project substituted.
+Two environment-specific values to check:
 
 1. `GATEWAY_URL` must point at the gateway data-plane service, whose name
    carries an install-specific suffix. Find it with:
@@ -99,7 +124,8 @@ Build and push like the ingestion image, fill in the image placeholder in
 Then:
 
 ```bash
-kubectl apply -f k8s/rag/retrieval/deployment.yaml
+gcloud builds submit retrieval --tag us-central1-docker.pkg.dev/$PROJECT_ID/rag/retrieval:latest
+sed "s/YOUR_PROJECT_ID/$PROJECT_ID/g" k8s/rag/retrieval/deployment.yaml | kubectl apply -f -
 kubectl -n rag port-forward svc/retrieval 8090:8090 &
 curl localhost:8090/search -H 'Content-Type: application/json' \
   -d '{"query":"how does KEDA wake the GPU pool?"}'
