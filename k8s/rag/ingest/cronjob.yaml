@@ -28,7 +28,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: ingest
-              image: "REGION-docker.pkg.dev/YOUR_PROJECT_ID/rag/ingest:latest"
+              image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/rag/ingest:latest"
               env:
                 - name: GCS_BUCKET
                   value: "YOUR_RAG_DOCS_BUCKET"

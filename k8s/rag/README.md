@@ -72,8 +72,8 @@ image path, bucket name):
 
 ```bash
 gcloud artifacts repositories create rag --repository-format=docker \
-  --location=REGION --project=YOUR_PROJECT_ID
-gcloud builds submit ingest --tag REGION-docker.pkg.dev/YOUR_PROJECT_ID/rag/ingest:latest
+  --location=us-central1 --project=YOUR_PROJECT_ID
+gcloud builds submit ingest --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/rag/ingest:latest
 kubectl apply -f k8s/rag/ingest/cronjob.yaml
 ```
 

@@ -17,7 +17,7 @@ spec:
         workload: rag
       containers:
         - name: retrieval
-          image: "REGION-docker.pkg.dev/YOUR_PROJECT_ID/rag/retrieval:latest"
+          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/rag/retrieval:latest"
           env:
             - name: QDRANT_URL
               value: "http://qdrant.rag.svc.cluster.local:6333"
