@@ -62,7 +62,13 @@ history in `bench/results.md`):
 ```bash
 kubectl -n rag create secret generic embed-apikey --from-literal=api-key='YOUR_EMBED_KEY'
 kubectl apply -f k8s/rag/embeddings/tei-deployment.yaml
+kubectl apply -f k8s/rag/embeddings/reranker-deployment.yaml
 ```
+
+Both are required: the retrieval deployment references `rerank-tei` for its
+reranking stage and fails with `NameResolutionError` if it is absent (or run
+hybrid-only by removing the env var:
+`kubectl -n rag set env deployment/retrieval RERANK_URL-`).
 
 ## Seed corpus
 
