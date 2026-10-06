@@ -4,7 +4,13 @@ variable "project_id" {
 
 variable "region" {
   type    = string
-  default = "europe-west4"
+  default = "us-central1"
+}
+
+variable "zone" {
+  description = "Zone for the zonal cluster and its node pools"
+  type        = string
+  default     = "us-central1-a"
 }
 
 variable "cluster_name" {
@@ -32,4 +38,15 @@ variable "system_machine_type" {
   description = "Machine type for the always-on system node pool"
   type        = string
   default     = "e2-standard-4"
+}
+
+variable "rag_machine_type" {
+  description = "Machine type for the RAG node pool (Qdrant, embedding server, retrieval API)"
+  type        = string
+  default     = "e2-standard-4"
+}
+
+variable "rag_docs_bucket_name" {
+  description = "Globally unique name for the GCS bucket holding RAG source documents"
+  type        = string
 }

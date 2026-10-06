@@ -13,3 +13,8 @@ variable "system_machine_type" {
   type        = string
   default     = "e2-standard-4"
 }
+
+variable "rag_docs_bucket_name" {
+  description = "Globally unique name for the GCS bucket holding RAG source documents"
+  type        = string
+}

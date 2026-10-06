@@ -13,7 +13,7 @@ When generating code or answering questions about this project, keep in mind:
 - **Model:** Qwen 2.5 Coder 14B AWQ.
 - **Node Pool Target:** `g2-standard-8` (1x L4 GPU) on Standard Instances (Spot is optional).
 - **System Pool Target:** `e2-standard-2` to host KEDA and GKE system pods.
-- **Location & Quotas:** Deployed as a **Zonal Cluster** in `europe-west4-b`.
+- **Location & Quotas:** Deployed as a **Zonal Cluster** in `us-central1-a`.
 - **Scale-to-Zero:** Relies on `kedacore/keda` and `kedacore/keda-add-ons-http` for intercepting traffic and scaling the GPU pool from 0 to 1.
 - **Security:** Strict. Never commit `.tfstate` files, use Workload Identity (never static service accounts).
 - **Learning Environment:** The user is actively learning. Always explain the code being added (e.g., *why* a specific Terraform resource is needed, or *how* Workload Identity solves a security problem).

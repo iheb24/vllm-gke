@@ -12,7 +12,7 @@ terraform {
 # trivy:ignore:gcp-0056
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
-  location = "${var.region}-b"
+  location = var.zone
   project  = var.project_id
 
   network    = var.network_name
@@ -50,7 +50,7 @@ resource "google_container_cluster" "primary" {
 
 resource "google_container_node_pool" "system_pool" {
   name     = "system-pool"
-  location = "${var.region}-b"
+  location = var.zone
   cluster  = google_container_cluster.primary.name
   project  = var.project_id
 
@@ -83,7 +83,7 @@ resource "google_container_node_pool" "system_pool" {
 
 resource "google_container_node_pool" "gpu_pool" {
   name     = "gpu-pool"
-  location = "${var.region}-b"
+  location = var.zone
   cluster  = google_container_cluster.primary.name
   project  = var.project_id
 

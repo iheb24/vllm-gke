@@ -1,0 +1,116 @@
+questions:
+  # --- README.md ---
+  - question: "Which two Homebrew packages must be installed on macOS before the repository's pre-commit security hooks can run?"
+    expected_source: "README.md"
+  - question: "During the quick-start setup, what command is used to discover your own public IP so it can be added to the GKE authorized networks?"
+    expected_source: "README.md"
+  - question: "What monthly idle cost does the zonal-cluster-plus-KEDA design achieve, and what would an always-on enterprise setup cost by comparison?"
+    expected_source: "README.md"
+  - question: "After terraform apply finishes, which shell script installs KEDA, and which helm command deploys the vLLM release into its own namespace?"
+    expected_source: "README.md"
+
+  # --- agent.md ---
+  - question: "Why is the 14B coding model served with AWQ 4-bit quantization rather than a higher-precision format?"
+    expected_source: "agent.md"
+  - question: "Where must Terraform state be stored, and which file patterns should .gitignore block so state never lands in the repository?"
+    expected_source: "agent.md"
+  - question: "Because the project owner treats this repo as a learning exercise, how is an AI coding agent supposed to deliver Terraform and Kubernetes work?"
+    expected_source: "agent.md"
+
+  # --- docs/implementation-guide.md ---
+  - question: "When configuring Cline, what HTTP status and error code come back if the model ID is typed with the wrong capitalization, for example `Qwen3-4b-cpu`?"
+    expected_source: "docs/implementation-guide.md"
+  - question: "How can you capture exactly what a misbehaving IDE client sends, using a local reverse proxy on port 8082?"
+    expected_source: "docs/implementation-guide.md"
+  - question: "Without opening the chat UI settings bar, how can the API key and routing mode be supplied straight in the browser URL?"
+    expected_source: "docs/implementation-guide.md"
+  - question: "If the KEDA interceptor answers every request with a 404, which file should you edit and what needs to be added to it?"
+    expected_source: "docs/implementation-guide.md"
+  - question: "Which HTTP response headers can you grep for after a curl request to see what the router decided and with what confidence?"
+    expected_source: "docs/implementation-guide.md"
+
+  # --- docs/cost-checkpoint.md ---
+  - question: "Adding the semantic routing tier raised the baseline idle spend; from what previous monthly figure to what new total?"
+    expected_source: "docs/cost-checkpoint.md"
+  - question: "What single-line change in the Terraform cluster module would switch the GPU pool to spot pricing, and roughly what hourly rate would that give?"
+    expected_source: "docs/cost-checkpoint.md"
+  - question: "Even for a single prompt, why should you budget around ten to fifteen minutes of GPU node billing per wake-up?"
+    expected_source: "docs/cost-checkpoint.md"
+  - question: "Why does the cost model insist on keeping the Envoy gateway as ClusterIP instead of giving it a public load balancer?"
+    expected_source: "docs/cost-checkpoint.md"
+
+  # --- docs/semantic-routing-walkthrough.md ---
+  - question: "Why must the router never see response bodies, and what symptom appears as `invalid_upstream_json` when it does?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+  - question: "What happens to the ext_proc filter if `SKIP` is used as a body mode, and how do requests behave afterwards?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+  - question: "Which hostnames have to be listed in the `HTTPScaledObject` hosts field so that router-forwarded, port-forwarded, and in-cluster traffic all match?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+  - question: "What route timeouts are configured for the GPU and CPU rules, and why must the GPU one exceed the cold-start hold time?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+  - question: "What priority values are assigned to the code_agentic, technical_complex, and chat_casual decisions, and which tier does each target?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+  - question: "In the validation record, how long did a cold start take when the model PVC still had to be populated for the first time?"
+    expected_source: "docs/semantic-routing-walkthrough.md"
+
+  # --- docs/experimenting-with-routing.md ---
+  - question: "Why can't the classifier tell apart an easy prompt like planning a static site from a hard one like planning a distributed rewrite?"
+    expected_source: "docs/experimenting-with-routing.md"
+  - question: "When running the labeled prompt suite, what success criteria must code-agentic and chat-casual prompts meet, and which misrouting is tolerated?"
+    expected_source: "docs/experimenting-with-routing.md"
+  - question: "What are the four ways to observe routing decisions, ranked from most to least convenient?"
+    expected_source: "docs/experimenting-with-routing.md"
+  - question: "After editing signals or decisions in the router's values file, which helm and kubectl commands roll the change out?"
+    expected_source: "docs/experimenting-with-routing.md"
+
+  # --- docs/rag-architecture.md ---
+  - question: "Which vector database was picked for the RAG design, and what properties made it the recommended choice?"
+    expected_source: "docs/rag-architecture.md"
+  - question: "Why were Vertex AI Search and the Vertex AI RAG Engine ruled out for this self-hosted stack?"
+    expected_source: "docs/rag-architecture.md"
+  - question: "Which embedding model will run always-warm on CPU, and why does that choice guarantee indexing never wakes the GPU?"
+    expected_source: "docs/rag-architecture.md"
+  - question: "What chunking strategy is planned for ingestion, including the splitter, the target passage size, and the overlap?"
+    expected_source: "docs/rag-architecture.md"
+  - question: "In the laptop prototype, how much did prefixing each passage with its file and heading path improve retrieval accuracy?"
+    expected_source: "docs/rag-architecture.md"
+  - question: "Why is the embedding model effectively locked in once an index exists, and what operational habit does the document suggest for collection names?"
+    expected_source: "docs/rag-architecture.md"
+
+  # --- k8s/vllm/README.md ---
+  - question: "What is the status of the raw manifests under k8s/vllm compared to the Helm chart, and what extras does the chart provide?"
+    expected_source: "k8s/vllm/README.md"
+  - question: "Which path inside the vLLM pod does the model-cache persistent volume get mounted at?"
+    expected_source: "k8s/vllm/README.md"
+
+  # --- k8s/vllm-chart/README.md ---
+  - question: "Which value has to be passed with --set when installing the Helm chart so the Workload Identity service account is wired to the right GCP project?"
+    expected_source: "k8s/vllm-chart/README.md"
+  - question: "From which Hugging Face repository and file does the CPU-tier pod download its GGUF weights at startup?"
+    expected_source: "k8s/vllm-chart/README.md"
+  - question: "What is the name of the HTTPScaledObject resource in the chart, and what idle period triggers GPU scale-down?"
+    expected_source: "k8s/vllm-chart/README.md"
+
+  # --- infra/modules/network/README.md ---
+  - question: "Why does the network module create a Cloud Router together with a Cloud NAT gateway?"
+    expected_source: "infra/modules/network/README.md"
+  - question: "What CIDR ranges are assigned to the nodes, the pods, and the services inside the custom subnet?"
+    expected_source: "infra/modules/network/README.md"
+
+  # --- infra/modules/vllm-cluster/README.md ---
+  - question: "What limits the GPU node pool to a maximum of one node?"
+    expected_source: "infra/modules/vllm-cluster/README.md"
+  - question: "Which Terraform resource creates the binding that links the Kubernetes service account to the GCP service account for Workload Identity?"
+    expected_source: "infra/modules/vllm-cluster/README.md"
+  - question: "According to the module's architecture diagram, how does a developer on a local workstation reach the private cluster's control plane?"
+    expected_source: "infra/modules/vllm-cluster/README.md"
+
+  # --- out of scope ---
+  - question: "How do I export detailed GCP billing data to BigQuery and query it through the Cloud Billing API?"
+    expected_source: "none"
+  - question: "What changes would be needed to run this stack on AWS EKS with Karpenter instead of GKE?"
+    expected_source: "none"
+  - question: "How can I fine-tune the Qwen model with LoRA adapters on this cluster?"
+    expected_source: "none"
+  - question: "What is the recommended procedure for upgrading the GKE cluster to a newer Kubernetes version?"
+    expected_source: "none"
