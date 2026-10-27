@@ -80,11 +80,14 @@ Each deployable demo (`tag`, `cag`, `mag`) has:
 ## Deployment model: one at a time
 
 The cluster has one GPU and limited CPU. Showcases are deployed **one at a
-time**; `showcases/demo.sh` (added in the deployment phase) supports
-`up`, `down`, `status`, and `port-forward` per demo, refuses to start a second
-showcase unless explicitly overridden, and prints the active method and cleanup
-command. MAG teardown retains its PVC by default; only an explicit `purge`
-deletes memories.
+time** with `showcases/demo.sh <up|down|status|port-forward|purge> <tag|cag|mag>`:
+`up` refuses to start a second showcase unless `--force` is given (detected via
+the `ag-showcase` label on the Deployments under `k8s/showcases/`), and prints
+the active method, the port-forward command, and the cleanup command. MAG
+teardown retains its PVC by default; only an explicit `purge mag` (with
+confirmation) deletes memories. Each demo's README has a Kubernetes deployment
+section with build/push commands; each image is built from its own
+`showcases/<method>/Dockerfile`.
 
 Showcase branches are short-lived and merge back to `main`; there are no
 permanent divergent demo branches.
@@ -93,7 +96,12 @@ permanent divergent demo branches.
 
 - Default: `python -m pytest showcases/<method>/tests` — pure local, fake model
   transport, temporary SQLite/files, no network. Install dev dependencies from
-  `showcases/requirements-dev.txt`.
+  `showcases/requirements-dev.txt`. Run suites one showcase at a time (the flat
+  `app.py` module names cannot coexist in one pytest process).
+- Cross-cutting deployment checks: `python -m pytest showcases/tests` —
+  manifest contract, `demo.sh` behavior against a stubbed `kubectl`, and
+  container-less image-layout boot proofs. No app-module imports, no cluster
+  needed (kubectl dry-run checks self-skip without one).
 - Live tests: opt-in via environment variables (e.g. `AG_LIVE=1` plus gateway
   configuration) and only ever run with explicit human approval, per `agent.md`.
 - Evaluations live under `eval/showcases/` (questions/scenarios) with runners
@@ -126,11 +134,12 @@ when a cluster is available — do not assume `latest` behaves identically over 
 ```text
 showcases/
   README.md          # this file
-  demo.sh            # added in the deployment phase
+  demo.sh            # one-at-a-time manager: up/down/status/port-forward/purge
   requirements-dev.txt
-  tag/  (app.py, pipeline.py, sql_guard.py, data/, tests/, Dockerfile, requirements.txt, README.md)
+  tests/  (test_manifests.py, test_demo_sh.py, test_image_layout.py)
+  tag/  (app.py, pipeline.py, sql_guard.py, db.py, data/, tests/, Dockerfile, requirements.txt, README.md)
   cag/  (app.py, corpus.py, benchmark.py, corpus/, tests/, Dockerfile, requirements.txt, README.md)
-  mag/  (app.py, memory_store.py, pipeline.py, tests/, Dockerfile, requirements.txt, README.md)
+  mag/  (app.py, pipeline.py, memory_store.py, tests/, Dockerfile, requirements.txt, README.md)
 k8s/showcases/
   tag/deployment.yaml
   cag/deployment.yaml

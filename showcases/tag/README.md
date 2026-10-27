@@ -192,6 +192,37 @@ first runs establish the baseline. The 2026-10-27 fake-model run
 baseline, not a model-quality measurement; the live report is `NOT RUN`
 until a real gateway session.
 
+## Kubernetes deployment
+
+The image contains the app modules plus `data/schema.sql` + `data/seed.sql`
+(the database is rebuilt into an `emptyDir` at `/data` on startup — derived
+data, not baked state):
+
+```bash
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.0 showcases/tag
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.0
+
+showcases/demo.sh up tag              # refuses if another showcase is active
+showcases/demo.sh port-forward tag    # http://localhost:8091
+curl -s -X POST localhost:8091/chat -H 'Content-Type: application/json' \
+  -d '{"question": "On the three most expensive GPU days, summarize whether the incident notes point mainly to capacity problems or configuration problems."}'
+```
+
+Evidence: `trace.sql_attempts` and `evidence.sql` in the response;
+`ag_demo_tag_*` + `gen_ai.client.*` on `/metrics`. Run the eval against the
+forwarded port: `.venv-showcases/bin/python eval/run_tag_eval.py --url
+http://localhost:8091 --report eval/reports/<date>-tag-live.md`.
+
+The manifest sets `GATEWAY_URL` to the Envoy gateway service **with the
+`/v1` suffix** (this app appends `/chat/completions`). The service name in
+`k8s/showcases/tag/deployment.yaml` carries a generated hash copied from
+`k8s/rag/retrieval/deployment.yaml`; discover the real one with
+`kubectl get svc -n envoy-gateway-system` and keep them in sync. The
+database file lives on an `emptyDir` and is rebuilt from the seed on every
+pod start — nothing persists by design.
+
+Cleanup: `showcases/demo.sh down tag` (keeps nothing; no PVC).
+
 ## Limitations
 
 - This is a minimal three-stage TAG pipeline with semantic reasoning over

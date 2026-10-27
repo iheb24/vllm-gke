@@ -167,6 +167,43 @@ containment, remember/recall/correct/delete flows), and the HTTP API
 (`pytest showcases/mag/tests`, `…/tag/tests`, `…/cag/tests`) — the flat
 `app.py` module names cannot coexist in one pytest process.
 
+## Kubernetes deployment
+
+The image contains the app modules only; memories live on a dedicated PVC
+(`k8s/showcases/mag/pvc.yaml`, 1Gi `standard-rwo`, mounted at `/data` with
+`MAG_DB_PATH=/data/mag.db`):
+
+```bash
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-mag:v0.1.0 showcases/mag
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-mag:v0.1.0
+
+showcases/demo.sh up mag
+showcases/demo.sh port-forward mag    # http://localhost:8093
+curl -s -X POST localhost:8093/chat -H 'Content-Type: application/json' \
+  -d '{"user_id":"alice","session_id":"demo-A","question":"remember: I prefer concise answers"}'
+```
+
+Then re-run the Alice/Bob walkthrough from the demo script above against
+`localhost:8093`, and the scenario eval with
+`.venv-showcases/bin/python eval/run_mag_eval.py --url http://localhost:8093`.
+
+Persistence and availability semantics:
+
+- The PVC **survives `demo.sh down mag`** (which deletes only the
+  Deployment/Service) and API-pod restarts: memories and session turns
+  persist until explicitly purged. `demo.sh purge mag` deletes the PVC —
+  and every stored memory — only after a typed confirmation.
+- **Single replica + `strategy: Recreate`**: SQLite allows one writer, so
+  there is no HPA and no rolling update racing two pods on the same file.
+- Evidence: `evidence.memory_ids` / `trace.stages` in every response;
+  `ag_demo_mag_*` + `gen_ai.client.*` on `/metrics`. The manifest's
+  `GATEWAY_URL` carries the `/v1` suffix; the Envoy service name hash is
+  copied from the retrieval manifest — verify with
+  `kubectl get svc -n envoy-gateway-system`.
+
+Cleanup: `showcases/demo.sh down mag` (keeps the PVC and says so);
+`showcases/demo.sh purge mag` when memories should be destroyed.
+
 ## Limitations
 
 - **Keyword retrieval only** (FTS5 bm25): no embeddings, no Qdrant, no
