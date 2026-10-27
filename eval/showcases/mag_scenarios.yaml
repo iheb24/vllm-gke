@@ -1,0 +1,131 @@
+scenarios:
+  - id: cross-session-recall
+    description: Alice stores a preference in one session and recalls it from a new session.
+    steps:
+      - action: remember
+        user_id: eval-alice
+        session_id: eval-session-A
+        text: I prefer concise answers
+        save_as: pref_id
+      - action: chat
+        user_id: eval-alice
+        session_id: eval-session-B
+        question: How should you answer me?
+        expect_mentions:
+          - Based on your stored memory
+          - concise answers
+      - action: list
+        user_id: eval-alice
+        expect_count: 1
+
+  - id: user-isolation
+    description: Bob cannot see, correct, or delete Alice's memory; his view stays empty.
+    steps:
+      - action: remember
+        user_id: eval-alice2
+        session_id: s1
+        text: Alice preference for terse output
+        save_as: alice_pref
+      - action: chat
+        user_id: eval-bob2
+        session_id: s1
+        question: What is Alice preference for terse output?
+        expect_absent:
+          - Based on your stored memory
+          - stored memory [
+      - action: list
+        user_id: eval-bob2
+        expect_count: 0
+      - action: correct
+        user_id: eval-bob2
+        memory_id: $alice_pref
+        text: hijacked by bob
+        expect_status: 404
+      - action: delete
+        user_id: eval-bob2
+        memory_id: $alice_pref
+        expect_status: 404
+      - action: list
+        user_id: eval-alice2
+        expect_count: 1
+
+  - id: correction-flow
+    description: Correcting a memory supersedes the old text; only the new text is recalled.
+    steps:
+      - action: remember
+        user_id: eval-carol
+        session_id: s1
+        text: the gpu pool has 1 node
+        save_as: nodes_id
+      - action: correct
+        user_id: eval-carol
+        memory_id: $nodes_id
+        text: the gpu pool has 2 nodes
+        expect_status: 200
+        save_as: nodes_id
+      - action: chat
+        user_id: eval-carol
+        session_id: s2
+        question: How many gpu nodes do we have?
+        expect_mentions:
+          - the gpu pool has 2 nodes
+        expect_absent:
+          - has 1 node
+      - action: list
+        user_id: eval-carol
+        expect_count: 1
+
+  - id: forgetting-flow
+    description: Delete removes one memory; the other still recalls; delete-all removes the rest.
+    steps:
+      - action: remember
+        user_id: eval-dave
+        session_id: s1
+        text: my favorite editor is vim
+        save_as: alpha_id
+      - action: remember
+        user_id: eval-dave
+        session_id: s1
+        text: the deploy window is friday at 17:00
+        save_as: beta_id
+      - action: delete
+        user_id: eval-dave
+        memory_id: $alpha_id
+        expect_status: 200
+      - action: chat
+        user_id: eval-dave
+        session_id: s2
+        question: What is my favorite editor?
+        expect_absent:
+          - Based on your stored memory
+          - vim
+      - action: chat
+        user_id: eval-dave
+        session_id: s2
+        question: When is the deploy window?
+        expect_mentions:
+          - deploy window
+          - friday
+      - action: delete_all
+        user_id: eval-dave
+        expect_deleted: 1
+      - action: list
+        user_id: eval-dave
+        expect_count: 0
+
+  - id: secret-rejection
+    description: Secret-like content is rejected at the API and warned about in chat.
+    steps:
+      - action: remember_api
+        user_id: eval-erin
+        text: password = hunter2
+        expect_status: 422
+      - action: chat
+        user_id: eval-erin
+        session_id: s1
+        question: "remember: my api key is sk-abcdefghijklmnop"
+        expect_mentions:
+          - Not stored
+      - action: list
+        user_id: eval-erin
+        expect_count: 0
