@@ -1,0 +1,46 @@
+{
+  "corpus_sha256": "c2d8c188e9e6c98e9fff3dfb89d5a3bbb93c833fda55034b280f0fcacf11cc1f",
+  "corpus_sha256_short": "c2d8c188e9e6",
+  "tokenizer": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
+  "tokenizer_id": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
+  "token_budget": 12000,
+  "total_tokens": 7628,
+  "files": [
+    {
+      "file": "routing-architecture.md",
+      "sha256": "a3547de796dafa414a4d1ad253f79953b294085eb4bb3c8f73637b5a9e37c049",
+      "bytes": 5941,
+      "tokens": 1637
+    },
+    {
+      "file": "gateway-integration.md",
+      "sha256": "d9725f68b18e6f19a89a6fd27efbeab8284d5422f623be8852a1a5fb68079718",
+      "bytes": 2509,
+      "tokens": 598
+    },
+    {
+      "file": "operator-guide.md",
+      "sha256": "5ab80918956fbcd8d122082801348ba17a180ca0016d88502f58786138983af9",
+      "bytes": 4473,
+      "tokens": 1261
+    },
+    {
+      "file": "cost-model.md",
+      "sha256": "008d38c86e12e1dca6f969ee331ce3ed6a755b80234fb42a43f19cf67f087f4f",
+      "bytes": 2062,
+      "tokens": 591
+    },
+    {
+      "file": "routing-behavior.md",
+      "sha256": "ed45cc65d59745c1f1b0d690510689e8037ae581f22807378ff9b9d61be618d5",
+      "bytes": 3028,
+      "tokens": 708
+    },
+    {
+      "file": "rag-design.md",
+      "sha256": "3c092bb4290b1e6203a1eacffdf5bc9fab01ad36e31925ec0ea00ca9b66ba2dc",
+      "bytes": 11016,
+      "tokens": 2833
+    }
+  ]
+}
