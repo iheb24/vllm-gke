@@ -34,4 +34,5 @@ Thumbs.db
 .venv-rag/
 .venv-showcases/
 showcases/tag/data/serving.db
+showcases/mag/data/
 __pycache__/
