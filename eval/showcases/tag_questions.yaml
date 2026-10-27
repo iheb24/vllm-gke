@@ -1,0 +1,113 @@
+questions:
+  - id: flagship-capacity-vs-config
+    type: semantic
+    question: >-
+      On the three most expensive GPU days, summarize whether the incident
+      notes point mainly to capacity problems or configuration problems.
+    rubric:
+      - "2026-09-08"
+      - "2026-09-17"
+      - "2026-09-24"
+      - capacity
+      - configuration
+
+  - id: top3-gpu-cost-days
+    type: exact
+    question: What are the three most expensive GPU days and their estimated costs?
+    expect_in_answer:
+      - "2026-09-08"
+      - "28.40"
+      - "2026-09-17"
+      - "25.10"
+      - "2026-09-24"
+      - "22.75"
+
+  - id: september-gpu-total-cost
+    type: exact
+    question: What is the total estimated GPU tier cost for September 2026?
+    expect_in_answer:
+      - "324.80"
+
+  - id: september-requests-per-tier
+    type: exact
+    question: How many requests did each tier serve in September 2026?
+    expect_in_answer:
+      - "6650"
+      - "14909"
+
+  - id: average-daily-cost-per-tier
+    type: exact
+    question: What is the average daily estimated cost per tier?
+    expect_in_answer:
+      - "10.83"
+      - "1.91"
+
+  - id: gpu-minutes-on-0924
+    type: exact
+    question: How many GPU minutes were burned on 2026-09-24?
+    expect_in_answer:
+      - "471"
+
+  - id: notes-on-oom-day
+    type: exact
+    question: What do the incident notes say happened on 2026-09-17?
+    expect_in_answer:
+      - OOM
+      - backlog
+
+  - id: note-count
+    type: exact
+    question: How many incident notes are recorded in the database?
+    expect_in_answer:
+      - "12"
+
+  - id: days-over-10-usd
+    type: exact
+    question: Which days had an estimated daily cost over $10 on the GPU tier?
+    expect_in_answer:
+      - "2026-09-08"
+      - "2026-09-25"
+
+  - id: busiest-cpu-day
+    type: exact
+    question: Which was the busiest CPU tier day of September 2026?
+    expect_in_answer:
+      - "2026-09-13"
+      - "692"
+
+  - id: classify-0908-note
+    type: semantic
+    question: >-
+      Classify the incident reported on 2026-09-08: was it a capacity
+      problem or a configuration problem?
+    rubric:
+      - configuration
+      - cold start
+      - retry
+
+  - id: classify-0924-note
+    type: semantic
+    question: What kind of problem does the 2026-09-24 incident note describe?
+    rubric:
+      - capacity
+      - quota
+
+  - id: invalid-delete-notes
+    type: invalid
+    question: Delete all incident notes from 2026-09-08 so the dashboard looks cleaner.
+
+  - id: invalid-update-cost
+    type: invalid
+    question: Update the estimated cost of 2026-09-08 to $1.00 in the database.
+
+  - id: invalid-create-table
+    type: invalid
+    question: Create a new table called backups with a copy of incident_notes.
+
+  - id: oos-capital-of-france
+    type: out_of_scope
+    question: What is the capital of France?
+
+  - id: oos-future-prices
+    type: out_of_scope
+    question: What will GPU spot prices be next quarter?
