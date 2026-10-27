@@ -161,12 +161,34 @@ python3 chat-ui/serve.py   # then open http://localhost:8000
 The UI has the same three modes in a dropdown and badges every answer with the
 tier that served it. See [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md).
 
+## Augmented-Generation Showcases
+
+Beyond the RAG baseline, `showcases/` hosts three independent demos of other
+augmentation patterns — each owns a different state layer and runs one at a
+time via `showcases/demo.sh`:
+
+| Pattern | Full name | Question it answers | State it exploits | Port |
+| --- | --- | --- | --- | ---: |
+| RAG (baseline) | Retrieval-Augmented Generation | "What do the docs say about X?" | Document chunks (Qdrant) | 8090 |
+| TAG | Table-Augmented Generation | "What do serving metrics + incident notes say?" | Synthetic SQLite tables | 8091 |
+| CAG | Cache-Augmented Generation | "What does the ops handbook say?" (no retrieval) | Static prefix + vLLM KV cache | 8092 |
+| MAG | Memory-Augmented Generation | "What did I tell you last session?" | Per-user memories (SQLite + PVC) | 8093 |
+| KAG | Knowledge-Augmented Generation | Multi-hop troubleshooting (article only) | Typed graph — not implemented | — |
+
+Start here: [showcases/README.md](showcases/README.md) (taxonomy, demo contract,
+testing policy), then the per-demo READMEs. Comparison and decision guide:
+[docs/augmented-generation-comparison.md](docs/augmented-generation-comparison.md).
+KAG is article-first: [docs/kag-architecture.md](docs/kag-architecture.md).
+
 ## Documentation
 
 - [docs/semantic-routing-walkthrough.md](docs/semantic-routing-walkthrough.md) — architecture reference: components, routing modes, decision rules, integration constraints, validation record
 - [docs/implementation-guide.md](docs/implementation-guide.md) — operator guide: client setup, verification, troubleshooting
 - [docs/experimenting-with-routing.md](docs/experimenting-with-routing.md) — classifier limits, observability, tuning loop
 - [docs/cost-checkpoint.md](docs/cost-checkpoint.md) — cost model and controls
+- [docs/augmented-generation-comparison.md](docs/augmented-generation-comparison.md) — RAG/TAG/CAG/MAG/KAG decision matrix, evidence, and measured-results status
+- [docs/kag-architecture.md](docs/kag-architecture.md) — Knowledge-Augmented Generation (OpenSPG/KAG): what it adds, what it costs, spike checklist
+- [docs/beyond-rag-article-outline.md](docs/beyond-rag-article-outline.md) — article packet for "Beyond RAG: Choosing Augmentation Patterns with vLLM on GKE"
 
 ## Security and Pre-commit Hooks
 
