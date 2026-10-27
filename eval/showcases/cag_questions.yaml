@@ -1,0 +1,111 @@
+questions:
+  - id: routing-model-modes
+    type: corpus
+    question: Which model value forces the CPU tier, and which forces the GPU tier?
+    expected_source: routing-architecture.md
+    required_mentions:
+      - qwen3-4b-cpu
+      - Qwen/Qwen2.5-Coder-14B-Instruct-AWQ
+
+  - id: cold-start-timings
+    type: corpus
+    question: How long does a GPU cold start take with a warm PVC and with a cold PVC?
+    expected_source: routing-architecture.md
+    required_mentions:
+      - "3-4"
+      - "7.5"
+      - "300"
+
+  - id: timings-field-breakage
+    type: corpus
+    question: What breaks when llama.cpp's timings field reaches the semantic router?
+    expected_source: gateway-integration.md
+    required_mentions:
+      - timings
+      - invalid_upstream_json
+
+  - id: backend-authentication
+    type: corpus
+    question: How do the vLLM and llama.cpp backends authenticate client requests?
+    expected_source: gateway-integration.md
+    required_mentions:
+      - Bearer
+      - vllm-api-key
+      - "401"
+
+  - id: expose-gateway
+    type: corpus
+    question: How do you expose the gateway to local clients?
+    expected_source: operator-guide.md
+    required_mentions:
+      - port-forward
+      - "8081"
+
+  - id: invalid-inference-request
+    type: corpus
+    question: What does a 400 invalid inference request mean and how do you fix it?
+    expected_source: operator-guide.md
+    required_mentions:
+      - case-sensitive
+      - exact names
+
+  - id: idle-monthly-cost
+    type: corpus
+    question: What is the idle monthly cost of the stack?
+    expected_source: cost-model.md
+    required_mentions:
+      - $100
+      - e2-standard-4
+
+  - id: minimum-gpu-wake-budget
+    type: corpus
+    question: What is the minimum billed time to budget per GPU wake?
+    expected_source: cost-model.md
+    required_mentions:
+      - 10-15
+      - "300"
+
+  - id: false-positives-accepted
+    type: corpus
+    question: Why does the routing stack accept false positives?
+    expected_source: routing-behavior.md
+    required_mentions:
+      - false negative
+      - small model
+
+  - id: observe-routing-decisions
+    type: corpus
+    question: Which response headers and log events show the router's decision?
+    expected_source: routing-behavior.md
+    required_mentions:
+      - x-vsr
+      - routing_decision
+
+  - id: rag-pool-reason
+    type: corpus
+    question: Why was a dedicated rag-pool introduced?
+    expected_source: rag-design.md
+    required_mentions:
+      - TEI
+      - OOM
+      - e2-standard-4
+
+  - id: rag-answering-tier
+    type: corpus
+    question: Which tier answers RAG questions and why?
+    expected_source: rag-design.md
+    required_mentions:
+      - qwen3-4b-cpu
+      - GPU wake
+
+  - id: oos-capital-of-france
+    type: out_of_corpus
+    question: What is the capital of France?
+
+  - id: oos-gmail-password
+    type: out_of_corpus
+    question: How do I reset my Gmail password?
+
+  - id: oos-hamlet
+    type: out_of_corpus
+    question: Explain the plot of Hamlet.
