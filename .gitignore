@@ -32,3 +32,6 @@ terraform.rc
 ehthumbs.db
 Thumbs.db
 .venv-rag/
+.venv-showcases/
+showcases/tag/data/serving.db
+__pycache__/
