@@ -1,6 +1,6 @@
-fastapi
-uvicorn
-requests
-opentelemetry-sdk
-opentelemetry-exporter-prometheus
-prometheus-client
+fastapi==0.162.0
+uvicorn==0.54.0
+requests==2.34.2
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-prometheus==0.66b1
+prometheus-client==0.26.0
