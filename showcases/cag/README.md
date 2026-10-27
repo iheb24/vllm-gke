@@ -165,6 +165,36 @@ not-covered fallback for out-of-corpus ones; exits non-zero if any corpus
 question fails. The 2026-10-27 fake-model run passed 15/15 and is a harness
 baseline, not a model-quality measurement.
 
+## Kubernetes deployment
+
+The image contains the app modules plus the pinned corpus (`corpus/`
+including `manifest.json`). The tokenizer package is dev-only; in the image
+the budget check uses the flagged `chars//2` estimate and the 512-token
+template reserve (the corpus numbers themselves come from the manifest, so
+they stay exact).
+
+```bash
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0 showcases/cag
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0
+
+showcases/demo.sh up cag
+showcases/demo.sh port-forward cag    # http://localhost:8092
+curl -s -X POST localhost:8092/chat -H 'Content-Type: application/json' \
+  -d '{"question": "What is the idle monthly cost of the stack?"}'
+curl -s -X POST localhost:8092/warmup
+```
+
+Evidence: `evidence.corpus_version` and `trace.cache_verified` (stays
+`false` until the live benchmark records counter deltas);
+`ag_demo_cag_prefix.tokens` is labeled by corpus version on `/metrics`.
+Benchmark from the live session doc: `eval/reports/2026-10-27-cag-live.md`.
+The manifest's `GATEWAY_URL` carries the `/v1` suffix; the Envoy service
+name hash is copied from the retrieval manifest — verify with
+`kubectl get svc -n envoy-gateway-system`. Memory limit is 768Mi (the
+corpus is loaded in process memory).
+
+Cleanup: `showcases/demo.sh down cag`.
+
 ## Limitations
 
 - **Prefix caching reduces prefill work only.** It does not speed up decode

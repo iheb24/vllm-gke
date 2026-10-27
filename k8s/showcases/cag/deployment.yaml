@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ag-cag
+  namespace: rag
+  labels:
+    ag-showcase: cag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ag-cag
+  template:
+    metadata:
+      labels:
+        app: ag-cag
+        ag-showcase: cag
+    spec:
+      nodeSelector:
+        workload: rag
+      containers:
+        - name: cag
+          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0"
+          env:
+            - name: GATEWAY_URL
+              value: "http://envoy-vllm-semantic-router-34deec5c.envoy-gateway-system.svc.cluster.local:80/v1"
+            - name: GATEWAY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api-key
+                  key: api-key
+            - name: GATEWAY_MODEL
+              value: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+          ports:
+            - name: http
+              containerPort: 8092
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "768Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8092
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8092
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ag-cag
+  namespace: rag
+  labels:
+    ag-showcase: cag
+spec:
+  type: ClusterIP
+  selector:
+    app: ag-cag
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8092
