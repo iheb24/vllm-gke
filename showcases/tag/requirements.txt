@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+requests
+opentelemetry-sdk
+opentelemetry-exporter-prometheus
+prometheus-client
