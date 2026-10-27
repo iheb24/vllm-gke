@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ag-mag
+  namespace: rag
+  labels:
+    ag-showcase: mag
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ag-mag
+  template:
+    metadata:
+      labels:
+        app: ag-mag
+        ag-showcase: mag
+    spec:
+      nodeSelector:
+        workload: rag
+      containers:
+        - name: mag
+          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-mag:v0.1.0"
+          env:
+            - name: GATEWAY_URL
+              value: "http://envoy-vllm-semantic-router-34deec5c.envoy-gateway-system.svc.cluster.local:80/v1"
+            - name: GATEWAY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api-key
+                  key: api-key
+            - name: GATEWAY_MODEL
+              value: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+            - name: MAG_DB_PATH
+              value: "/data/mag.db"
+          ports:
+            - name: http
+              containerPort: 8093
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8093
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8093
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ag-mag-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ag-mag
+  namespace: rag
+  labels:
+    ag-showcase: mag
+spec:
+  type: ClusterIP
+  selector:
+    app: ag-mag
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8093

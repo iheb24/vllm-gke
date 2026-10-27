@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ag-tag
+  namespace: rag
+  labels:
+    ag-showcase: tag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ag-tag
+  template:
+    metadata:
+      labels:
+        app: ag-tag
+        ag-showcase: tag
+    spec:
+      nodeSelector:
+        workload: rag
+      containers:
+        - name: tag
+          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.0"
+          env:
+            - name: GATEWAY_URL
+              value: "http://envoy-vllm-semantic-router-34deec5c.envoy-gateway-system.svc.cluster.local:80/v1"
+            - name: GATEWAY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api-key
+                  key: api-key
+            - name: GATEWAY_MODEL
+              value: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+            - name: TAG_DB_PATH
+              value: "/data/serving.db"
+          ports:
+            - name: http
+              containerPort: 8091
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8091
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ag-tag
+  namespace: rag
+  labels:
+    ag-showcase: tag
+spec:
+  type: ClusterIP
+  selector:
+    app: ag-tag
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8091
