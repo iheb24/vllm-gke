@@ -103,8 +103,9 @@ resource "google_container_node_pool" "gpu_pool" {
   node_config {
     machine_type = "g2-standard-8"
 
-    # Uncomment the line below to use Spot instances instead of Standard (On-Demand) instances
-    # spot = true
+    # Spot capacity is the reliable way to get an L4 in us-central1-a;
+    # on-demand g2-standard-8 frequently hits GCE out-of-resources there.
+    spot = true
 
     guest_accelerator {
       type  = "nvidia-l4"
