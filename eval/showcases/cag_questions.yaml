@@ -10,7 +10,9 @@ questions:
   - id: cold-start-timings
     type: corpus
     question: How long does a GPU cold start take with a warm PVC and with a cold PVC?
-    expected_source: routing-architecture.md
+    expected_source:
+      - routing-architecture.md
+      - cost-model.md
     required_mentions:
       - "3-4"
       - "7.5"

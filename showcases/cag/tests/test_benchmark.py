@@ -21,10 +21,10 @@ def tiny_corpus(tmp_path):
 
 
 CANNED = """\
-# HELP vllm:prefix_cache_queries Number of prefix cache queries
-# TYPE vllm:prefix_cache_queries counter
-vllm:prefix_cache_queries{model_name="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"} 40.0
-vllm:prefix_cache_hits{model_name="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"} 25.0
+# HELP vllm:prefix_cache_queries_total Number of prefix cache queries
+# TYPE vllm:prefix_cache_queries_total counter
+vllm:prefix_cache_queries_total{model_name="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"} 40.0
+vllm:prefix_cache_hits_total{model_name="Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"} 25.0
 vllm:num_requests_running 2
 vllm:gpu_cache_usage_perc{model_name="x"} 0.5
 some_other_counter{label="a"} 3
@@ -35,8 +35,8 @@ not a metric line
 
 def test_parse_prometheus_basic():
     metrics = benchmark.parse_prometheus(CANNED)
-    assert metrics["vllm:prefix_cache_queries"] == 40.0
-    assert metrics["vllm:prefix_cache_hits"] == 25.0
+    assert metrics["vllm:prefix_cache_queries_total"] == 40.0
+    assert metrics["vllm:prefix_cache_hits_total"] == 25.0
     assert metrics["vllm:num_requests_running"] == 2.0
     assert metrics["vllm:gpu_cache_usage_perc"] == 0.5
     assert metrics["some_other_counter"] == 7.5
@@ -47,8 +47,8 @@ def test_extract_counters_defaults_and_missing():
     metrics = benchmark.parse_prometheus(CANNED)
     counters = benchmark.extract_counters(metrics)
     assert counters == {
-        "vllm:prefix_cache_queries": 40.0,
-        "vllm:prefix_cache_hits": 25.0,
+        "vllm:prefix_cache_queries_total": 40.0,
+        "vllm:prefix_cache_hits_total": 25.0,
     }
     assert benchmark.extract_counters(metrics, ("vllm:nonexistent",)) == {"vllm:nonexistent": 0.0}
 
@@ -81,9 +81,9 @@ def fake_chat_stream(messages, max_output_tokens):
     }
 
 
-METRICS_BEFORE = "vllm:prefix_cache_queries 10\nvllm:prefix_cache_hits 2\n"
-METRICS_AFTER_HIT = "vllm:prefix_cache_queries 20\nvllm:prefix_cache_hits 7\n"
-METRICS_AFTER_NO_HIT = "vllm:prefix_cache_queries 20\nvllm:prefix_cache_hits 2\n"
+METRICS_BEFORE = "vllm:prefix_cache_queries_total 10\nvllm:prefix_cache_hits_total 2\n"
+METRICS_AFTER_HIT = "vllm:prefix_cache_queries_total 20\nvllm:prefix_cache_hits_total 7\n"
+METRICS_AFTER_NO_HIT = "vllm:prefix_cache_queries_total 20\nvllm:prefix_cache_hits_total 2\n"
 
 
 def run_fake_benchmark(tiny_corpus, after_metrics):
@@ -114,9 +114,9 @@ def test_benchmark_phases_and_verdict_verified(tiny_corpus):
     assert [s["question"] for s in samples] == ["q two", "q three", "q one"]
     assert all("ttft_s" in s and "latency_s" in s and "usage" in s for s in samples)
     evidence = report["cache_reuse_evidence"]
-    assert evidence["before"] == {"vllm:prefix_cache_queries": 10.0, "vllm:prefix_cache_hits": 2.0}
-    assert evidence["after"] == {"vllm:prefix_cache_queries": 20.0, "vllm:prefix_cache_hits": 7.0}
-    assert evidence["counter_deltas"] == {"vllm:prefix_cache_queries": 10.0, "vllm:prefix_cache_hits": 5.0}
+    assert evidence["before"] == {"vllm:prefix_cache_queries_total": 10.0, "vllm:prefix_cache_hits_total": 2.0}
+    assert evidence["after"] == {"vllm:prefix_cache_queries_total": 20.0, "vllm:prefix_cache_hits_total": 7.0}
+    assert evidence["counter_deltas"] == {"vllm:prefix_cache_queries_total": 10.0, "vllm:prefix_cache_hits_total": 5.0}
     assert evidence["verdict"] == "VERIFIED"
     assert fetch.health_polls == 3
     assert fetch.metrics_snapshots == []
@@ -126,7 +126,7 @@ def test_verdict_never_inferred_from_latency(tiny_corpus):
     report, _ = run_fake_benchmark(tiny_corpus, METRICS_AFTER_NO_HIT)
     warm = report["warm"]["samples"]
     assert warm[0]["ttft_s"] < report["prime"]["ttft_s"]
-    assert report["cache_reuse_evidence"]["counter_deltas"]["vllm:prefix_cache_hits"] == 0.0
+    assert report["cache_reuse_evidence"]["counter_deltas"]["vllm:prefix_cache_hits_total"] == 0.0
     assert report["cache_reuse_evidence"]["verdict"] == "NOT VERIFIED"
 
 

@@ -20,7 +20,7 @@ spec:
         workload: rag
       containers:
         - name: cag
-          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0"
+          image: "us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.1"
           env:
             - name: GATEWAY_URL
               value: "http://envoy-vllm-semantic-router-34deec5c.envoy-gateway-system.svc.cluster.local:80/v1"

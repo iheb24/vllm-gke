@@ -1,11 +1,12 @@
 # CAG — Cache-Augmented Generation showcase
 
-> **Status: CACHE REUSE NOT VERIFIED**
-> The mechanics (builder, API, benchmark harness, evals) are implemented and
-> tested, but prefix-cache reuse has NOT yet been observed on the live vLLM
-> server. That proof requires the cluster session in
-> `eval/reports/2026-10-27-cag-live.md`, which records prefix-cache counter
-> deltas. Until then this label stays.
+> **Status: CACHE REUSE VERIFIED — 2026-10-28 live run**
+>
+> vLLM 0.32.0 (`vllm/vllm-openai@sha256:befccf0e…`) on a spot L4:
+> prefix-cache counter delta 85,712/85,798 hits (99.9%) across 11 requests,
+> TTFT 7.23s cold-prefix prime vs ~0.53s warm (raw samples in
+> `eval/reports/2026-10-28-cag-benchmark.md`). Answer-quality eval is a
+> separate, weaker story — see `eval/reports/2026-10-28-cag-live.md`.
 
 CAG answers questions about **one small, versioned operations handbook** by
 putting the *entire corpus* in the system prompt of every request. There is
@@ -174,8 +175,8 @@ template reserve (the corpus numbers themselves come from the manifest, so
 they stay exact).
 
 ```bash
-docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0 showcases/cag
-docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.0
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.1 showcases/cag
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-cag:v0.1.1
 
 showcases/demo.sh up cag
 showcases/demo.sh port-forward cag    # http://localhost:8092
