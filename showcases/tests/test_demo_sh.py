@@ -14,6 +14,14 @@ case "$*" in
   *"get deploy"*"ag-showcase"*)
     printf '%s' "$STUB_DEPLOYS"
     ;;
+  "apply -f "*)
+    dir="${@: -1}"
+    if grep -q "YOUR_PROJECT_ID" "$dir"/*.yaml 2>/dev/null; then
+      echo "APPLY_HAS_PLACEHOLDER" >> "$KUBECTL_STUB_LOG"
+    fi
+    grep -A1 "name: GATEWAY_MODEL" "$dir"/*.yaml 2>/dev/null \
+      | grep "value:" | sed "s/.*value: //" >> "$KUBECTL_STUB_LOG"
+    ;;
 esac
 exit 0
 """
@@ -90,7 +98,9 @@ def test_up_applies_when_nothing_active(stub_env):
     result = run_demo(["up", "tag"], make_env(""))
     assert result.returncode == 0, result.stderr + result.stdout
     calls = stub_calls(log)
-    assert any("apply -f" in call and call.endswith("k8s/showcases/tag/") for call in calls)
+    assert any("apply -f" in call for call in calls)
+    assert "kubectl apply -f" in result.stdout
+    assert "k8s/showcases/tag/" in result.stdout
     assert "cleanup:    demo.sh down tag" in result.stdout
 
 
@@ -177,3 +187,30 @@ def test_status_reports_none(stub_env):
     result = run_demo(["status"], make_env(""))
     assert result.returncode == 0
     assert "no showcase active" in result.stdout
+
+
+def test_up_substitutes_project_id_when_env_set(stub_env):
+    make_env, log = stub_env
+    env = make_env("")
+    env["AG_PROJECT_ID"] = "my-proj"
+    result = run_demo(["up", "tag"], env)
+    assert result.returncode == 0
+    assert not any("APPLY_HAS_PLACEHOLDER" in call for call in stub_calls(log))
+
+
+def test_up_keeps_placeholder_without_env(stub_env):
+    make_env, log = stub_env
+    result = run_demo(["up", "tag"], make_env(""))
+    assert result.returncode == 0
+    assert any("APPLY_HAS_PLACEHOLDER" in call for call in stub_calls(log))
+
+
+def test_up_gateway_model_override(stub_env):
+    make_env, log = stub_env
+    env = make_env("")
+    env["AG_PROJECT_ID"] = "my-proj"
+    env["AG_GATEWAY_MODEL"] = "qwen3-4b-cpu"
+    result = run_demo(["up", "mag"], env)
+    assert result.returncode == 0
+    assert any("qwen3-4b-cpu" in call for call in stub_calls(log))
+    assert not any("Qwen2.5-Coder-14B" in call for call in stub_calls(log))
