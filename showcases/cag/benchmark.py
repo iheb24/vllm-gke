@@ -24,7 +24,7 @@ import subprocess
 import time
 import urllib.request
 
-DEFAULT_COUNTERS = ("vllm:prefix_cache_queries", "vllm:prefix_cache_hits")
+DEFAULT_COUNTERS = ("vllm:prefix_cache_queries_total", "vllm:prefix_cache_hits_total")
 RESTART_ENV_VAR = "AG_ALLOW_POD_RESTART"
 PRIME_NOTE = (
     "first request after readiness: cache-priming prefill, not pod startup; "

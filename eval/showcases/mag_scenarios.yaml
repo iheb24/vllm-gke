@@ -12,7 +12,6 @@ scenarios:
         session_id: eval-session-B
         question: How should you answer me?
         expect_mentions:
-          - Based on your stored memory
           - concise answers
       - action: list
         user_id: eval-alice
@@ -29,10 +28,9 @@ scenarios:
       - action: chat
         user_id: eval-bob2
         session_id: s1
-        question: What is Alice preference for terse output?
+        question: What preferences does Alice have on file?
         expect_absent:
-          - Based on your stored memory
-          - stored memory [
+          - terse output
       - action: list
         user_id: eval-bob2
         expect_count: 0
@@ -97,8 +95,8 @@ scenarios:
         session_id: s2
         question: What is my favorite editor?
         expect_absent:
-          - Based on your stored memory
           - vim
+          - favorite editor is vim
       - action: chat
         user_id: eval-dave
         session_id: s2

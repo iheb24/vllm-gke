@@ -199,8 +199,8 @@ The image contains the app modules plus `data/schema.sql` + `data/seed.sql`
 data, not baked state):
 
 ```bash
-docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.0 showcases/tag
-docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.0
+docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.1 showcases/tag
+docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/showcases/ag-tag:v0.1.1
 
 showcases/demo.sh up tag              # refuses if another showcase is active
 showcases/demo.sh port-forward tag    # http://localhost:8091

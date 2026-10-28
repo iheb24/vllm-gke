@@ -45,7 +45,8 @@ Rules:
 - At most {row_cap} rows may come back; use WHERE, aggregates (COUNT, SUM, AVG, GROUP BY) and LIMIT to stay small.
 - day values are ISO dates ('2026-09-08'); tier is 'gpu' or 'cpu'.
 - incident_notes.note is free text; incident_notes.category is an internal label - never select it, never mention it.
-- If the question cannot be answered from this database, reply exactly {sentinel} and nothing else.
+- Analytic questions (classify, summarize, compare, causes, "what kind of problem") ARE in scope: write the SELECT that fetches the relevant rows; the reasoning over the rows happens in a later step, not in SQL.
+- Reply exactly {sentinel} and nothing else ONLY when no rows in these tables could help answer the question (for example general knowledge, weather, or future predictions).
 """
 
 ANSWER_PROMPT = """You answer the question strictly from the SQL result rows below.

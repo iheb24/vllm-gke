@@ -37,7 +37,8 @@ Answer strictly from the handbook extracts below.
 Rules:
 - Ground every claim in the extracts; outside knowledge is forbidden.
 - Quote exact identifiers (model names, error codes, commands, numbers) verbatim.
-- Cite the extract file for each claim as (source: <filename>).
+- Quote durations and numbers in the exact form the extract uses (do not convert units).
+- Every answer MUST end with a final line exactly of the form: Sources: <filename>[, <filename>...]
 - If the extracts do not cover the question, say exactly: the operations handbook corpus does not cover this question.
 """
 

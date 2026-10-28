@@ -21,6 +21,8 @@ Usage: python eval/run_cag_eval.py [--url http://localhost:8092] \
 import argparse
 import datetime
 import os
+import re
+from pathlib import Path
 
 import requests
 import yaml
@@ -39,11 +41,30 @@ def ask(url, question):
     return resp.json()
 
 
-def score(question, result):
+def source_aliases(corpus_dir):
+    aliases = {}
+    for path in Path(corpus_dir).glob("*.md"):
+        names = {path.name}
+        first_line = path.read_text(encoding="utf-8").splitlines()[0]
+        match = re.search(r"<!--\s*source:\s*(\S+)", first_line)
+        if match:
+            original = match.group(1)
+            names.add(original)
+            names.add(Path(original).name)
+        aliases[path.name] = names
+    return aliases
+
+
+def score(question, result, aliases=None):
     answer = (result.get("answer") or "").lower()
     if question["type"] == "corpus":
         missing = [m for m in question["required_mentions"] if m.lower() not in answer]
-        source_ok = question["expected_source"].lower() in answer
+        expected = question["expected_source"]
+        expected_list = expected if isinstance(expected, list) else [expected]
+        accepted = set()
+        for name in expected_list:
+            accepted |= (aliases or {}).get(name, {name})
+        source_ok = any(name.lower() in answer for name in accepted)
         return not missing and source_ok, {
             "missing_mentions": missing,
             "source_cited": source_ok,
@@ -60,14 +81,16 @@ def main():
     parser.add_argument("--questions", default="eval/showcases/cag_questions.yaml")
     parser.add_argument("--report")
     parser.add_argument("--note", default="")
+    parser.add_argument("--corpus-dir", default="showcases/cag/corpus")
     args = parser.parse_args()
 
     questions = load_questions(args.questions)
+    aliases = source_aliases(args.corpus_dir)
     results = []
     for q in questions:
         try:
             response = ask(args.url, q["question"])
-            passed, detail = score(q, response)
+            passed, detail = score(q, response, aliases)
         except Exception as exc:
             response, passed, detail = None, False, {"transport_error": str(exc)}
         results.append({"question": q, "response": response, "passed": passed, "detail": detail})
