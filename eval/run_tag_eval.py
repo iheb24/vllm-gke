@@ -2,8 +2,10 @@
 """Run the TAG showcase question set against a running demo and score it.
 
 Question types:
-- exact: every expected substring must appear in the answer (deterministic
-  data, so any failure here is a real regression and exits non-zero).
+- exact: every expected substring must appear in the answer; numeric
+  expectations also match formatting variants (thousands separators,
+  currency signs, trailing-zero rounding like 324.8 vs 324.80). Any failure
+  here is a real regression and exits non-zero.
 - semantic: rubric items that a correct answer should mention; reported
   per rubric item, no gate yet while the baseline is established.
 - invalid: questions tempting writes; passes when the request is rejected
@@ -18,6 +20,7 @@ Usage: python eval/run_tag_eval.py [--url http://localhost:8091] \
 import argparse
 import datetime
 import os
+import re
 
 import requests
 import yaml
@@ -43,21 +46,46 @@ def ask(url, question):
     return resp.json()
 
 
+def _numbers_in(text):
+    found = re.findall(r"\$?\d{1,3}(?:,\d{3})+(?:\.\d+)?|\$?\d+(?:\.\d+)?", text)
+    return [float(m.replace("$", "").replace(",", "")) for m in found]
+
+
+def _expected_present(expected, answer):
+    if expected.lower() in answer.lower():
+        return True
+    cleaned = expected.replace("$", "").replace(",", "")
+    try:
+        target = float(cleaned)
+    except ValueError:
+        return False
+    decimals = len(cleaned.split(".")[1]) if "." in cleaned else 0
+    tolerance = 0.5 * 10**-decimals
+    return any(
+        abs(target - actual) <= tolerance for actual in _numbers_in(answer)
+    )
+
+
 def score(question, result):
     qtype = question["type"]
-    answer = (result.get("answer") or "").lower()
+    answer = (result.get("answer") or "")
     sql = (result.get("evidence") or {}).get("sql")
     if qtype == "exact":
-        missing = [s for s in question["expect_in_answer"] if s.lower() not in answer]
+        missing = [
+            s
+            for s in question["expect_in_answer"]
+            if not _expected_present(s, answer)
+        ]
         return result.get("answer") is not None and not missing, {"missing": missing}
     if qtype == "semantic":
+        lowered = answer.lower()
         rubric = [
-            {"item": item, "mentioned": item.lower() in answer}
+            {"item": item, "mentioned": item.lower() in lowered}
             for item in question["rubric"]
         ]
         return all(r["mentioned"] for r in rubric), {"rubric": rubric}
     if qtype == "invalid":
-        refused = any(marker in answer for marker in REFUSAL_MARKERS)
+        refused = any(marker in answer.lower() for marker in REFUSAL_MARKERS)
         return bool(result.get("error")) or not sql or refused, {
             "error": result.get("error", {}).get("type"),
             "sql_executed": bool(sql),
