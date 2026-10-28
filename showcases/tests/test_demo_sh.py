@@ -19,7 +19,7 @@ case "$*" in
     if grep -q "YOUR_PROJECT_ID" "$dir"/*.yaml 2>/dev/null; then
       echo "APPLY_HAS_PLACEHOLDER" >> "$KUBECTL_STUB_LOG"
     fi
-    grep -A1 "name: GATEWAY_MODEL" "$dir"/*.yaml 2>/dev/null \
+    grep -A1 "name: GATEWAY_" "$dir"/*.yaml 2>/dev/null \
       | grep "value:" | sed "s/.*value: //" >> "$KUBECTL_STUB_LOG"
     ;;
 esac
@@ -214,3 +214,14 @@ def test_up_gateway_model_override(stub_env):
     assert result.returncode == 0
     assert any("qwen3-4b-cpu" in call for call in stub_calls(log))
     assert not any("Qwen2.5-Coder-14B" in call for call in stub_calls(log))
+
+
+def test_up_gateway_url_override(stub_env):
+    make_env, log = stub_env
+    env = make_env("")
+    env["AG_PROJECT_ID"] = "my-proj"
+    env["AG_GATEWAY_URL"] = "http://envoy-new-hash.envoy-gateway-system.svc.cluster.local:80/v1"
+    result = run_demo(["up", "tag"], env)
+    assert result.returncode == 0
+    assert any("envoy-new-hash" in call for call in stub_calls(log))
+    assert not any("34deec5c" in call for call in stub_calls(log))

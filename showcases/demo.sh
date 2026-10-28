@@ -24,6 +24,10 @@ Methods: tag (port 8091), cag (port 8092), mag (port 8093)
 
 Environment:
   AG_PROJECT_ID     substitute YOUR_PROJECT_ID in manifests at apply time
+  AG_GATEWAY_URL    override the GATEWAY_URL env value at apply time (use after
+                    reinstalling the router: the Envoy service name has a
+                    generated hash; find it with kubectl get svc -n
+                    envoy-gateway-system)
   AG_GATEWAY_MODEL  override the GATEWAY_MODEL env value at apply time
                     (e.g. qwen3-4b-cpu to keep a demo on the CPU tier)
 
@@ -69,6 +73,15 @@ render_manifests() {
             awk -v model="${AG_GATEWAY_MODEL}" '
                 found { sub(/value: ".*"/, "value: \"" model "\""); found = 0; print; next }
                 /name: GATEWAY_MODEL/ { found = 1; print; next }
+                { print }
+            ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+        done
+    fi
+    if [ -n "${AG_GATEWAY_URL:-}" ]; then
+        for f in "$dest"/*.yaml; do
+            awk -v url="${AG_GATEWAY_URL}" '
+                found { sub(/value: ".*"/, "value: \"" url "\""); found = 0; print; next }
+                /name: GATEWAY_URL/ { found = 1; print; next }
                 { print }
             ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
         done
