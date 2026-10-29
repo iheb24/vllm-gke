@@ -66,7 +66,10 @@ render_manifests() {
     mkdir -p "$dest"
     cp "${MANIFESTS}/${method}/"*.yaml "$dest"
     if [ -n "${AG_PROJECT_ID:-}" ]; then
-        sed -i '' "s|YOUR_PROJECT_ID|${AG_PROJECT_ID}|g" "$dest"/*.yaml
+        for f in "$dest"/*.yaml; do
+            awk -v proj="${AG_PROJECT_ID}" '{ gsub(/YOUR_PROJECT_ID/, proj); print }' \
+                "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+        done
     fi
     if [ -n "${AG_GATEWAY_MODEL:-}" ]; then
         for f in "$dest"/*.yaml; do
