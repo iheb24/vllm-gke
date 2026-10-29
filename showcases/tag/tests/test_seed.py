@@ -67,16 +67,24 @@ def test_september_totals(tmp_path):
     path = db.ensure_database(tmp_path / "f.db")
     rows = _query(
         path,
-        "SELECT tier, sum(requests), sum(gpu_minutes), printf('%.2f', sum(est_cost_usd)), "
-        "printf('%.2f', avg(est_cost_usd)), printf('%.1f', avg(requests)) "
+        "SELECT tier, sum(requests), sum(gpu_minutes), sum(est_cost_usd), "
+        "avg(est_cost_usd), avg(requests) "
         "FROM daily_serving_metrics GROUP BY tier ORDER BY tier",
     )
-    assert rows == [
-        ("cpu", 14909, 0, "57.45", "1.91", "497.0"),
-        ("gpu", 6650, 5218, "324.80", "10.83", "221.7"),
+    expected = [
+        ("cpu", 14909, 0, 57.45, 1.915, 496.97),
+        ("gpu", 6650, 5218, 324.80, 10.827, 221.67),
     ]
-    total = _query(path, "SELECT printf('%.2f', sum(est_cost_usd)) FROM daily_serving_metrics")
-    assert total == [("382.25",)]
+    assert len(rows) == len(expected)
+    for row, want in zip(rows, expected):
+        assert row[0] == want[0]
+        assert row[1] == want[1]
+        assert row[2] == want[2]
+        assert abs(row[3] - want[3]) < 0.005
+        assert abs(row[4] - want[4]) < 0.005
+        assert abs(row[5] - want[5]) < 0.005
+    total = _query(path, "SELECT sum(est_cost_usd) FROM daily_serving_metrics")
+    assert abs(total[0][0] - 382.25) < 0.005
 
 
 def test_incident_note_categories(tmp_path):
