@@ -166,5 +166,6 @@
     },
     "verdict": "VERIFIED"
   },
-  "restart_test": null
+  "restart_test": null,
+  "run_history": "This file is run 2 of 2026-10-28, generated with corrected counter names (vllm:prefix_cache_*_total). Run 1, on a truly cold cache (fresh vLLM pod, counters at zero), measured prime TTFT 7.226s and warm TTFT ~0.53s on stdout, but used pre-fix counter names, so its report was discarded and the 7.23s figure is quoted from that observation. This run 2 executed minutes later with the corpus already cached by run 1: the prime block below is therefore a warm-prefix measurement (0.533s), and its evidential value is the counter delta (85,798 queries, 85,712 hits), not the prime latency. Prime-phase misses were not scraped separately in this run; benchmark.py now records cache_state and counter_misses_during_prime so future cold runs are self-documenting. vLLM 0.32.0, image digest sha256:befccf0e, spot L4."
 }

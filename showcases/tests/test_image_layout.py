@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 METHODS = {
     "tag": {"env": {"TAG_FAKE_MODEL": "1"}, "payload": {"question": "How many incident notes are there?"}},
-    "cag": {"env": {"CAG_FAKE_MODEL": "1"}, "payload": {"question": "What is the idle monthly cost of the stack?"}},
+    "cag": {"env": {"CAG_FAKE_MODEL": "1", "CAG_TOKENIZER": "estimated"}, "payload": {"question": "What is the idle monthly cost of the stack?"}},
     "mag": {"env": {"MAG_FAKE_MODEL": "1"}, "payload": {"user_id": "layout", "session_id": "s1", "question": "remember: layout check"}},
 }
 

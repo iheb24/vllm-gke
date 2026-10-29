@@ -96,8 +96,15 @@ permanent divergent demo branches.
 
 - Default: `python -m pytest showcases/<method>/tests` — pure local, fake model
   transport, temporary SQLite/files, no network. Install dev dependencies from
-  `showcases/requirements-dev.txt`. Run suites one showcase at a time (the flat
-  `app.py` module names cannot coexist in one pytest process).
+  `showcases/requirements-dev.txt`. Run suites one showcase at a time: the
+  demos ship same-named flat modules (`app.py`, `pipeline.py`, `fake_model.py`)
+  whose suite fixtures cannot coexist in one pytest process, so a combined
+  `pytest showcases/...` run fails at collection. Per-suite runs are the
+  supported path.
+- Offline/sandboxed environments: the CAG app loads the real tokenizer from
+  the Hugging Face hub when available; set `CAG_TOKENIZER=estimated` to force
+  the documented chars-based fallback with no network access (the test suite
+  does this automatically where it matters).
 - Cross-cutting deployment checks: `python -m pytest showcases/tests` —
   manifest contract, `demo.sh` behavior against a stubbed `kubectl`, and
   container-less image-layout boot proofs. No app-module imports, no cluster

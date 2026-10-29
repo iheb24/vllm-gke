@@ -28,7 +28,9 @@ DEFAULT_COUNTERS = ("vllm:prefix_cache_queries_total", "vllm:prefix_cache_hits_t
 RESTART_ENV_VAR = "AG_ALLOW_POD_RESTART"
 PRIME_NOTE = (
     "first request after readiness: cache-priming prefill, not pod startup; "
-    "pod startup time belongs to the readiness phase"
+    "pod startup time belongs to the readiness phase; cache_state is cold "
+    "only when the prefix counters show real misses during this request "
+    "(restart the vLLM pod first for a true cold measurement)"
 )
 
 
@@ -179,11 +181,22 @@ def run_benchmark(
     before = extract_counters(parse_prometheus(fetch(vllm_metrics_url)), counter_names)
     prime_start = clock()
     prime_result = chat_stream(build(questions[0])[0], max_output_tokens)
+    after_prime = extract_counters(parse_prometheus(fetch(vllm_metrics_url)), counter_names)
+    prime_misses = 0.0
+    for name in counter_names:
+        if "queries" in name:
+            hits_name = name.replace("queries", "hits")
+            if hits_name in after_prime:
+                prime_misses += (after_prime[name] - before[name]) - (
+                    after_prime[hits_name] - before[hits_name]
+                )
     prime = {
         "question": questions[0],
         "ttft_s": prime_result["ttft_s"],
         "latency_s": prime_result["latency_s"],
         "usage": prime_result["usage"],
+        "cache_state": "cold" if prime_misses >= 100 else "warm",
+        "counter_misses_during_prime": round(prime_misses, 6),
         "note": PRIME_NOTE,
     }
 
@@ -302,7 +315,11 @@ def main():
 
     evidence = report["cache_reuse_evidence"]
     print(f"readiness: {report['readiness']}")
-    print(f"prime ttft={report['prime']['ttft_s']}s latency={report['prime']['latency_s']}s")
+    print(
+        f"prime ttft={report['prime']['ttft_s']}s latency={report['prime']['latency_s']}s "
+        f"cache_state={report['prime']['cache_state']} "
+        f"(misses during prime={report['prime']['counter_misses_during_prime']})"
+    )
     for sample in report["warm"]["samples"]:
         print(f"warm #{sample['iteration']}: ttft={sample['ttft_s']}s latency={sample['latency_s']}s")
     print(f"counter deltas: {evidence['counter_deltas']}")
