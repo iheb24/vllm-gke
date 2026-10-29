@@ -20,6 +20,7 @@ Contracts enforced here:
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -92,6 +93,10 @@ _tokenizer_cache = {}
 def default_token_counter():
     if "counter" in _tokenizer_cache:
         return _tokenizer_cache["counter"]
+    if os.environ.get("CAG_TOKENIZER", "").lower() in ("estimated", "offline"):
+        counter = (lambda text: len(text) // 2), "estimated (chars//2, forced by CAG_TOKENIZER)"
+        _tokenizer_cache["counter"] = counter
+        return counter
     try:
         from tokenizers import Tokenizer
 

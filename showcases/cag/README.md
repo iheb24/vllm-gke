@@ -3,10 +3,13 @@
 > **Status: CACHE REUSE VERIFIED — 2026-10-28 live run**
 >
 > vLLM 0.32.0 (`vllm/vllm-openai@sha256:befccf0e…`) on a spot L4:
-> prefix-cache counter delta 85,712/85,798 hits (99.9%) across 11 requests,
-> TTFT 7.23s cold-prefix prime vs ~0.53s warm (raw samples in
-> `eval/reports/2026-10-28-cag-benchmark.md`). Answer-quality eval is a
-> separate, weaker story — see `eval/reports/2026-10-28-cag-live.md`.
+> prefix-cache counter delta 85,712/85,798 hits (99.9%) across 11 requests
+> (committed in `eval/reports/2026-10-28-cag-benchmark.md`). The 7.23s
+> cold-prefix prime TTFT was measured on the first cold-cache run that same
+> day; the committed file records the warm-cache re-run (warm prime 0.533s)
+> plus the counter deltas — see its `run_history` field for the full
+> provenance. Answer-quality eval is a separate, weaker story — see
+> `eval/reports/2026-10-28-cag-live.md`.
 
 CAG answers questions about **one small, versioned operations handbook** by
 putting the *entire corpus* in the system prompt of every request. There is
@@ -104,7 +107,9 @@ the Envoy port-forward, `GATEWAY_API_KEY`, `GATEWAY_MODEL`); see
 
 Env config: `GATEWAY_URL`, `GATEWAY_API_KEY`, `GATEWAY_MODEL` (default
 `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ`), `CAG_MAX_OUTPUT_TOKENS` (default
-1024), `CAG_CORPUS_DIR`, `CAG_FAKE_MODEL`.
+1024), `CAG_CORPUS_DIR`, `CAG_FAKE_MODEL`, `CAG_TOKENIZER` (set to
+`estimated` to skip the Hugging Face tokenizer download and use the
+chars-based fallback, useful in offline environments).
 
 Endpoints: `POST /chat {question}`, `POST /warmup`, `GET /healthz`
 (re-verifies the manifest), `GET /metrics` (`ag_demo_cag_stage.duration`,

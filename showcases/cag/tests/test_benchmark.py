@@ -86,9 +86,10 @@ METRICS_AFTER_HIT = "vllm:prefix_cache_queries_total 20\nvllm:prefix_cache_hits_
 METRICS_AFTER_NO_HIT = "vllm:prefix_cache_queries_total 20\nvllm:prefix_cache_hits_total 2\n"
 
 
-def run_fake_benchmark(tiny_corpus, after_metrics):
+def run_fake_benchmark(tiny_corpus, after_metrics, after_prime_metrics=None):
     fake_chat_stream.calls = []
-    fetch = FakeFetch([METRICS_BEFORE, after_metrics], fail_polls=2)
+    snapshots = [METRICS_BEFORE, after_prime_metrics or after_metrics, after_metrics]
+    fetch = FakeFetch(snapshots, fail_polls=2)
     questions = ["q one", "q two", "q three"]
     report = benchmark.run_benchmark(
         "http://fake-app",
@@ -154,3 +155,18 @@ def test_restart_test_requires_explicit_env(tiny_corpus, monkeypatch):
             "http://fake-app", "http://fake-vllm/metrics", ["q"],
             corpus_dir=tiny_corpus, token_counter=stub_counter(),
         )
+
+
+def test_prime_labeled_cold_on_real_misses(tiny_corpus):
+    after_prime = "vllm:prefix_cache_queries_total 8500\nvllm:prefix_cache_hits_total 100\n"
+    after = "vllm:prefix_cache_queries_total 8600\nvllm:prefix_cache_hits_total 8600\n"
+    report, _ = run_fake_benchmark(tiny_corpus, after, after_prime)
+    assert report["prime"]["cache_state"] == "cold"
+    assert report["prime"]["counter_misses_during_prime"] == 8392.0
+
+
+def test_prime_labeled_warm_when_already_cached(tiny_corpus):
+    after_prime = "vllm:prefix_cache_queries_total 11.0\nvllm:prefix_cache_hits_total 3.0\n"
+    report, _ = run_fake_benchmark(tiny_corpus, METRICS_AFTER_HIT, after_prime)
+    assert report["prime"]["cache_state"] == "warm"
+    assert report["prime"]["counter_misses_during_prime"] == 0.0

@@ -118,3 +118,14 @@ def test_real_corpus_loads_and_scores():
     assert len(docs) == 6
     assert manifest["total_tokens"] <= 12000
     assert manifest["tokenizer"] == "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+
+
+def test_tokenizer_override_skips_network(monkeypatch):
+    import corpus as corpus_mod
+
+    monkeypatch.setenv("CAG_TOKENIZER", "estimated")
+    corpus_mod._tokenizer_cache.clear()
+    count, label = corpus_mod.default_token_counter()
+    assert count("abcd") == 2
+    assert "forced by CAG_TOKENIZER" in label
+    corpus_mod._tokenizer_cache.clear()
